@@ -12,6 +12,18 @@ steps:
   workingDirectory: api-gateway
   displayName: API Gateway - Run Tests
 
+- task: PublishTestResults@2
+  displayName: API Gateway - Publish Test Results
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/api-gateway/target/surefire-reports/*.xml'
+
+- task: PublishBuildArtifacts@1
+  displayName: API Gateway - Save Test Reports
+  inputs:
+    pathToPublish: api-gateway/target
+    artifactName: api-gateway-test-reports
+
 - task: Docker@2
   displayName: API Gateway - Build & Push
   inputs:
@@ -27,6 +39,18 @@ steps:
 - script: mvn test
   workingDirectory: eureka-server
   displayName: Eureka - Run Tests
+
+- task: PublishTestResults@2
+  displayName: Eureka - Publish Test Results
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/eureka-server/target/surefire-reports/*.xml'
+
+- task: PublishBuildArtifacts@1
+  displayName: Eureka - Save Test Reports
+  inputs:
+    pathToPublish: eureka-server/target
+    artifactName: eureka-test-reports
 
 - task: Docker@2
   displayName: Eureka - Build & Push
@@ -46,6 +70,12 @@ steps:
   workingDirectory: frontend
   displayName: Frontend - Build & Test
 
+- task: PublishBuildArtifacts@1
+  displayName: Frontend - Save Test Reports
+  inputs:
+    pathToPublish: frontend
+    artifactName: frontend-test-reports
+
 - task: Docker@2
   displayName: Frontend - Build & Push
   inputs:
@@ -61,6 +91,18 @@ steps:
 - script: mvn test
   workingDirectory: order-service
   displayName: Order Service - Run Tests
+
+- task: PublishTestResults@2
+  displayName: Order Service - Publish Test Results
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/order-service/target/surefire-reports/*.xml'
+
+- task: PublishBuildArtifacts@1
+  displayName: Order Service - Save Test Reports
+  inputs:
+    pathToPublish: order-service/target
+    artifactName: order-test-reports
 
 - task: Docker@2
   displayName: Order Service - Build & Push
@@ -78,6 +120,18 @@ steps:
   workingDirectory: product-service
   displayName: Product Service - Run Tests
 
+- task: PublishTestResults@2
+  displayName: Product Service - Publish Test Results
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/product-service/target/surefire-reports/*.xml'
+
+- task: PublishBuildArtifacts@1
+  displayName: Product Service - Save Test Reports
+  inputs:
+    pathToPublish: product-service/target
+    artifactName: product-test-reports
+
 - task: Docker@2
   displayName: Product Service - Build & Push
   inputs:
@@ -93,6 +147,18 @@ steps:
 - script: mvn test
   workingDirectory: user-service
   displayName: User Service - Run Tests
+
+- task: PublishTestResults@2
+  displayName: User Service - Publish Test Results
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/user-service/target/surefire-reports/*.xml'
+
+- task: PublishBuildArtifacts@1
+  displayName: User Service - Save Test Reports
+  inputs:
+    pathToPublish: user-service/target
+    artifactName: user-test-reports
 
 - task: Docker@2
   displayName: User Service - Build & Push
