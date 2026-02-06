@@ -4,167 +4,142 @@ trigger:
 pool:
   name: Default
 
-steps:
+stages:
 
-# ================= API Gateway =================
+# ============================
+# STAGE 1 : CI (Build + Test)
+# ============================
 
-- script: mvn test
-  workingDirectory: api-gateway
-  displayName: API Gateway - Run Tests
+- stage: CI
+  displayName: Build and Push Images
+  jobs:
+  - job: Build
+    steps:
 
-- task: PublishTestResults@2
-  displayName: API Gateway - Publish Test Results
-  inputs:
-    testResultsFormat: 'JUnit'
-    testResultsFiles: '**/api-gateway/target/surefire-reports/*.xml'
+    # -------- API Gateway --------
 
-- task: PublishBuildArtifacts@1
-  displayName: API Gateway - Save Test Reports
-  inputs:
-    pathToPublish: api-gateway/target
-    artifactName: api-gateway-test-reports
+    - script: mvn test
+      workingDirectory: api-gateway
+      displayName: API Gateway - Test
 
-- task: Docker@2
-  displayName: API Gateway - Build & Push
-  inputs:
-    command: buildAndPush
-    containerRegistry: dockerhub
-    repository: prashasthnaik/apigateway
-    dockerfile: api-gateway/Dockerfile
-    tags: latest
+    - task: Docker@2
+      displayName: API Gateway - Build & Push
+      inputs:
+        command: buildAndPush
+        containerRegistry: dockerhub
+        repository: prashasthnaik/apigateway
+        dockerfile: api-gateway/Dockerfile
+        tags: latest
 
 
-# ================= Eureka =================
+    # -------- Eureka --------
 
-- script: mvn test
-  workingDirectory: eureka-server
-  displayName: Eureka - Run Tests
+    - script: mvn test
+      workingDirectory: eureka-server
+      displayName: Eureka - Test
 
-- task: PublishTestResults@2
-  displayName: Eureka - Publish Test Results
-  inputs:
-    testResultsFormat: 'JUnit'
-    testResultsFiles: '**/eureka-server/target/surefire-reports/*.xml'
-
-- task: PublishBuildArtifacts@1
-  displayName: Eureka - Save Test Reports
-  inputs:
-    pathToPublish: eureka-server/target
-    artifactName: eureka-test-reports
-
-- task: Docker@2
-  displayName: Eureka - Build & Push
-  inputs:
-    command: buildAndPush
-    containerRegistry: dockerhub
-    repository: prashasthnaik/eureka
-    dockerfile: eureka-server/Dockerfile
-    tags: latest
+    - task: Docker@2
+      displayName: Eureka - Build & Push
+      inputs:
+        command: buildAndPush
+        containerRegistry: dockerhub
+        repository: prashasthnaik/eureka
+        dockerfile: eureka-server/Dockerfile
+        tags: latest
 
 
-# ================= Frontend =================
+    # -------- Frontend --------
 
-- script: |
-    npm install
-    npm test
-  workingDirectory: frontend
-  displayName: Frontend - Build & Test
+    - script: |
+        npm install
+        npm test
+      workingDirectory: frontend
+      displayName: Frontend - Test
 
-- task: PublishBuildArtifacts@1
-  displayName: Frontend - Save Test Reports
-  inputs:
-    pathToPublish: frontend
-    artifactName: frontend-test-reports
-
-- task: Docker@2
-  displayName: Frontend - Build & Push
-  inputs:
-    command: buildAndPush
-    containerRegistry: dockerhub
-    repository: prashasthnaik/frontend
-    dockerfile: frontend/Dockerfile
-    tags: latest
+    - task: Docker@2
+      displayName: Frontend - Build & Push
+      inputs:
+        command: buildAndPush
+        containerRegistry: dockerhub
+        repository: prashasthnaik/frontend
+        dockerfile: frontend/Dockerfile
+        tags: latest
 
 
-# ================= Order Service =================
+    # -------- Order Service --------
 
-- script: mvn test
-  workingDirectory: order-service
-  displayName: Order Service - Run Tests
+    - script: mvn test
+      workingDirectory: order-service
+      displayName: Order - Test
 
-- task: PublishTestResults@2
-  displayName: Order Service - Publish Test Results
-  inputs:
-    testResultsFormat: 'JUnit'
-    testResultsFiles: '**/order-service/target/surefire-reports/*.xml'
-
-- task: PublishBuildArtifacts@1
-  displayName: Order Service - Save Test Reports
-  inputs:
-    pathToPublish: order-service/target
-    artifactName: order-test-reports
-
-- task: Docker@2
-  displayName: Order Service - Build & Push
-  inputs:
-    command: buildAndPush
-    containerRegistry: dockerhub
-    repository: prashasthnaik/order
-    dockerfile: order-service/Dockerfile
-    tags: latest
+    - task: Docker@2
+      displayName: Order - Build & Push
+      inputs:
+        command: buildAndPush
+        containerRegistry: dockerhub
+        repository: prashasthnaik/order
+        dockerfile: order-service/Dockerfile
+        tags: latest
 
 
-# ================= Product Service =================
+    # -------- Product Service --------
 
-- script: mvn test
-  workingDirectory: product-service
-  displayName: Product Service - Run Tests
+    - script: mvn test
+      workingDirectory: product-service
+      displayName: Product - Test
 
-- task: PublishTestResults@2
-  displayName: Product Service - Publish Test Results
-  inputs:
-    testResultsFormat: 'JUnit'
-    testResultsFiles: '**/product-service/target/surefire-reports/*.xml'
-
-- task: PublishBuildArtifacts@1
-  displayName: Product Service - Save Test Reports
-  inputs:
-    pathToPublish: product-service/target
-    artifactName: product-test-reports
-
-- task: Docker@2
-  displayName: Product Service - Build & Push
-  inputs:
-    command: buildAndPush
-    containerRegistry: dockerhub
-    repository: prashasthnaik/product
-    dockerfile: product-service/Dockerfile
-    tags: latest
+    - task: Docker@2
+      displayName: Product - Build & Push
+      inputs:
+        command: buildAndPush
+        containerRegistry: dockerhub
+        repository: prashasthnaik/product
+        dockerfile: product-service/Dockerfile
+        tags: latest
 
 
-# ================= User Service =================
+    # -------- User Service --------
 
-- script: mvn test
-  workingDirectory: user-service
-  displayName: User Service - Run Tests
+    - script: mvn test
+      workingDirectory: user-service
+      displayName: User - Test
 
-- task: PublishTestResults@2
-  displayName: User Service - Publish Test Results
-  inputs:
-    testResultsFormat: 'JUnit'
-    testResultsFiles: '**/user-service/target/surefire-reports/*.xml'
+    - task: Docker@2
+      displayName: User - Build & Push
+      inputs:
+        command: buildAndPush
+        containerRegistry: dockerhub
+        repository: prashasthnaik/user
+        dockerfile: user-service/Dockerfile
+        tags: latest
 
-- task: PublishBuildArtifacts@1
-  displayName: User Service - Save Test Reports
-  inputs:
-    pathToPublish: user-service/target
-    artifactName: user-test-reports
 
-- task: Docker@2
-  displayName: User Service - Build & Push
-  inputs:
-    command: buildAndPush
-    containerRegistry: dockerhub
-    repository: prashasthnaik/user
-    dockerfile: user-service/Dockerfile
-    tags: latest
+# ============================
+# STAGE 2 : CD (Deploy to AKS)
+# ============================
+
+- stage: CD
+  displayName: Deploy to AKS
+  dependsOn: CI
+  condition: succeeded()
+
+  jobs:
+  - job: Deploy
+    steps:
+
+    - task: Kubernetes@1
+      displayName: Deploy to AKS
+      inputs:
+        connectionType: 'Azure Resource Manager'
+        azureSubscriptionEndpoint: 'your-azure-service-connection'
+        azureResourceGroup: 'your-resource-group'
+        kubernetesCluster: 'your-aks-cluster'
+        command: apply
+        useConfigurationFile: true
+        configuration: |
+          k8s/api-gateway.yaml
+          k8s/eureka.yaml
+          k8s/frontend.yaml
+          k8s/order.yaml
+          k8s/product.yaml
+          k8s/user.yaml
