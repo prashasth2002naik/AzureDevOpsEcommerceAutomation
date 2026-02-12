@@ -257,13 +257,9 @@ stages:
 
     steps:
 
-    # ----------------------------
-    # 1️⃣ Pre-deployment safety checks
-    # ----------------------------
-
     - script: |
         echo "Validating docker-compose file..."
-        docker-compose config
+        docker compose config
       displayName: Validate docker-compose.yml
 
     - script: |
@@ -271,23 +267,19 @@ stages:
         docker info
       displayName: Check Docker daemon
 
-    # ----------------------------
-    # 2️⃣ Controlled deployment actions
-    # ----------------------------
-
     - script: |
         echo "Pulling latest images..."
-        docker-compose pull
+        docker compose pull
       displayName: Pull latest Docker images
 
     - script: |
-        echo "Starting containers cleanly..."
-        docker-compose up -d --remove-orphans
-      displayName: Deploy containers (clean)
+        echo "Deploying containers cleanly..."
+        docker compose up -d --remove-orphans
+      displayName: Deploy containers
 
     - script: |
-        echo "Verifying container status..."
-        docker-compose ps
+        echo "Verifying running containers..."
+        docker compose ps
       displayName: Verify running containers
 
 # ============================
