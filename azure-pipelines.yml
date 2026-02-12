@@ -129,8 +129,8 @@ stages:
     displayName: CI Job
     pool:
       name: Default
-      demands:
-        - Agent.Name -equals dev-agent-1
+      # demands:
+      #   - Agent.Name -equals dev-agent-1
 
     steps:
 
