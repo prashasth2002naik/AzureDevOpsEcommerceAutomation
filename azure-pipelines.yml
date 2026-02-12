@@ -220,8 +220,27 @@ stages:
         dockerfile: user-service/Dockerfile
         tags: $(Build.BuildId)
 
+# # ============================
+# # STAGE 2 : DEV (Agent Pool)
+# # ============================
+# - stage: DEV
+#   displayName: CD - Dev
+#   dependsOn: CI
+#   condition: succeeded()
+
+#   jobs:
+#   - job: DeployDev
+#     displayName: Deploy to DEV
+#     pool:
+#       name: Default
+#       demands:
+#         - ENV -equals DEV
+
+#     steps:
+#     - script: echo "Deploying images to DEV"
+#       displayName: DEV Deploy
 # ============================
-# STAGE 2 : DEV (Agent Pool)
+# STAGE : DEV
 # ============================
 - stage: DEV
   displayName: CD - Dev
@@ -237,8 +256,39 @@ stages:
         - ENV -equals DEV
 
     steps:
-    - script: echo "Deploying images to DEV"
-      displayName: DEV Deploy
+
+    # ----------------------------
+    # 1️⃣ Pre-deployment safety checks
+    # ----------------------------
+
+    - script: |
+        echo "Validating docker-compose file..."
+        docker-compose config
+      displayName: Validate docker-compose.yml
+
+    - script: |
+        echo "Checking Docker daemon availability..."
+        docker info
+      displayName: Check Docker daemon
+
+    # ----------------------------
+    # 2️⃣ Controlled deployment actions
+    # ----------------------------
+
+    - script: |
+        echo "Pulling latest images..."
+        docker-compose pull
+      displayName: Pull latest Docker images
+
+    - script: |
+        echo "Starting containers cleanly..."
+        docker-compose up -d --remove-orphans
+      displayName: Deploy containers (clean)
+
+    - script: |
+        echo "Verifying container status..."
+        docker-compose ps
+      displayName: Verify running containers
 
 # ============================
 # STAGE 3 : TEST (Agent Pool)
