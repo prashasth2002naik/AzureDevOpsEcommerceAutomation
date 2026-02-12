@@ -221,7 +221,7 @@ stages:
         tags: $(Build.BuildId)
 
 # ============================
-# STAGE 2 : DEV
+# STAGE 2 : DEV (Agent Pool)
 # ============================
 - stage: DEV
   displayName: CD - Dev
@@ -229,17 +229,19 @@ stages:
   condition: succeeded()
 
   jobs:
-  - deployment: DeployDev
-    displayName: Dev Environment
-    environment: Dev
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - script: echo "All images pushed in CI"
+  - job: DeployDev
+    displayName: Deploy to DEV
+    pool:
+      name: Default
+      demands:
+        - ENV -equals DEV
+
+    steps:
+    - script: echo "Deploying images to DEV"
+      displayName: DEV Deploy
 
 # ============================
-# STAGE 3 : TEST
+# STAGE 3 : TEST (Agent Pool)
 # ============================
 - stage: TEST
   displayName: CD - Test
@@ -247,29 +249,32 @@ stages:
   condition: succeeded()
 
   jobs:
-  - deployment: DeployTest
-    displayName: Test Environment
-    environment: Test
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - script: echo "Same images promoted to Test"
+  - job: DeployTest
+    displayName: Deploy to TEST
+    pool:
+      name: Default
+      demands:
+        - ENV -equals TEST
 
-# ============================
-# STAGE 4 : PROD
-# ============================
-- stage: PROD
-  displayName: CD - Prod
-  dependsOn: TEST
-  condition: succeeded()
+    steps:
+    - script: echo "Deploying images to TEST"
+      displayName: TEST Deploy
 
-  jobs:
-  - deployment: DeployProd
-    displayName: Prod Environment
-    environment: Prod
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - script: echo "Ready for Prod deployment"
+# # ============================
+# # STAGE 4 : PROD (Environment)
+# # ============================
+# - stage: PROD
+#   displayName: CD - Prod
+#   dependsOn: TEST
+#   condition: succeeded()
+
+#   jobs:
+#   - deployment: DeployProd
+#     displayName: Deploy to PROD
+#     environment: Prod
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#           - script: echo "Deploying images to PROD"
+#             displayName: PROD Deploy
