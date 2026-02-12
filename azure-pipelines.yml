@@ -114,32 +114,3 @@ stages:
         tags: latest
 
 
-# ============================
-# STAGE 2 : CD (Deploy to AKS)
-# ============================
-
-- stage: CD
-  displayName: Deploy to AKS
-  dependsOn: CI
-  condition: succeeded()
-
-  jobs:
-  - job: Deploy
-    steps:
-
-    - task: Kubernetes@1
-      displayName: Deploy to AKS
-      inputs:
-        connectionType: 'Azure Resource Manager'
-        azureSubscriptionEndpoint: 'your-azure-service-connection'
-        azureResourceGroup: 'your-resource-group'
-        kubernetesCluster: 'your-aks-cluster'
-        command: apply
-        useConfigurationFile: true
-        configuration: |
-          k8s/api-gateway.yaml
-          k8s/eureka.yaml
-          k8s/frontend.yaml
-          k8s/order.yaml
-          k8s/product.yaml
-          k8s/user.yaml
