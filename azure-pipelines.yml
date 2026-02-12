@@ -1,23 +1,140 @@
+# trigger:
+# - main
+
+# pool:
+#   name: Default
+
+# stages:
+
+# # ============================
+# # STAGE 1 : CI (Build + Test)
+# # ============================
+
+# - stage: CI
+#   displayName: Build and Push Images
+#   jobs:
+#   - job: Build
+#     steps:
+
+#     # -------- API Gateway --------
+
+#     - script: mvn test
+#       workingDirectory: api-gateway
+#       displayName: API Gateway - Test
+
+#     - task: Docker@2
+#       displayName: API Gateway - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/apigateway
+#         dockerfile: api-gateway/Dockerfile
+#         tags: latest
+
+
+#     # -------- Eureka --------
+
+#     - script: mvn test
+#       workingDirectory: eureka-server
+#       displayName: Eureka - Test
+
+#     - task: Docker@2
+#       displayName: Eureka - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/eureka
+#         dockerfile: eureka-server/Dockerfile
+#         tags: latest
+
+
+#     # -------- Frontend --------
+
+#     - script: |
+#         npm install
+#         npm test
+#       workingDirectory: frontend
+#       displayName: Frontend - Test
+
+#     - task: Docker@2
+#       displayName: Frontend - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/frontend
+#         dockerfile: frontend/Dockerfile
+#         tags: latest
+
+
+#     # -------- Order Service --------
+
+#     - script: mvn test
+#       workingDirectory: order-service
+#       displayName: Order - Test
+
+#     - task: Docker@2
+#       displayName: Order - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/order
+#         dockerfile: order-service/Dockerfile
+#         tags: latest
+
+
+#     # -------- Product Service --------
+
+#     - script: mvn test
+#       workingDirectory: product-service
+#       displayName: Product - Test
+
+#     - task: Docker@2
+#       displayName: Product - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/product
+#         dockerfile: product-service/Dockerfile
+#         tags: latest
+
+
+#     # -------- User Service --------
+
+#     - script: mvn test
+#       workingDirectory: user-service
+#       displayName: User - Test
+
+#     - task: Docker@2
+#       displayName: User - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/user
+#         dockerfile: user-service/Dockerfile
+#         tags: latest
+
+
 trigger:
 - main
-
-pool:
-  name: Default
 
 stages:
 
 # ============================
-# STAGE 1 : CI (Build + Test)
+# STAGE 1 : CI (Build + Test + Docker Push)
 # ============================
-
 - stage: CI
-  displayName: Build and Push Images
+  displayName: CI - Build, Test & Push Images
   jobs:
-  - job: Build
+  - job: CIJob
+    displayName: CI Job
+    pool:
+      name: Default
+      demands:
+        - Agent.Name -equals dev-agent-1
+
     steps:
 
     # -------- API Gateway --------
-
     - script: mvn test
       workingDirectory: api-gateway
       displayName: API Gateway - Test
@@ -29,11 +146,9 @@ stages:
         containerRegistry: dockerhub
         repository: prashasthnaik/apigateway
         dockerfile: api-gateway/Dockerfile
-        tags: latest
-
+        tags: $(Build.BuildId)
 
     # -------- Eureka --------
-
     - script: mvn test
       workingDirectory: eureka-server
       displayName: Eureka - Test
@@ -45,11 +160,9 @@ stages:
         containerRegistry: dockerhub
         repository: prashasthnaik/eureka
         dockerfile: eureka-server/Dockerfile
-        tags: latest
-
+        tags: $(Build.BuildId)
 
     # -------- Frontend --------
-
     - script: |
         npm install
         npm test
@@ -63,54 +176,100 @@ stages:
         containerRegistry: dockerhub
         repository: prashasthnaik/frontend
         dockerfile: frontend/Dockerfile
-        tags: latest
-
+        tags: $(Build.BuildId)
 
     # -------- Order Service --------
-
     - script: mvn test
       workingDirectory: order-service
-      displayName: Order - Test
+      displayName: Order Service - Test
 
     - task: Docker@2
-      displayName: Order - Build & Push
+      displayName: Order Service - Build & Push
       inputs:
         command: buildAndPush
         containerRegistry: dockerhub
         repository: prashasthnaik/order
         dockerfile: order-service/Dockerfile
-        tags: latest
-
+        tags: $(Build.BuildId)
 
     # -------- Product Service --------
-
     - script: mvn test
       workingDirectory: product-service
-      displayName: Product - Test
+      displayName: Product Service - Test
 
     - task: Docker@2
-      displayName: Product - Build & Push
+      displayName: Product Service - Build & Push
       inputs:
         command: buildAndPush
         containerRegistry: dockerhub
         repository: prashasthnaik/product
         dockerfile: product-service/Dockerfile
-        tags: latest
-
+        tags: $(Build.BuildId)
 
     # -------- User Service --------
-
     - script: mvn test
       workingDirectory: user-service
-      displayName: User - Test
+      displayName: User Service - Test
 
     - task: Docker@2
-      displayName: User - Build & Push
+      displayName: User Service - Build & Push
       inputs:
         command: buildAndPush
         containerRegistry: dockerhub
         repository: prashasthnaik/user
         dockerfile: user-service/Dockerfile
-        tags: latest
+        tags: $(Build.BuildId)
 
+# ============================
+# STAGE 2 : DEV
+# ============================
+- stage: DEV
+  displayName: CD - Dev
+  dependsOn: CI
+  condition: succeeded()
 
+  jobs:
+  - deployment: DeployDev
+    displayName: Dev Environment
+    environment: Dev
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo "All images pushed in CI"
+
+# ============================
+# STAGE 3 : TEST
+# ============================
+- stage: TEST
+  displayName: CD - Test
+  dependsOn: DEV
+  condition: succeeded()
+
+  jobs:
+  - deployment: DeployTest
+    displayName: Test Environment
+    environment: Test
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo "Same images promoted to Test"
+
+# ============================
+# STAGE 4 : PROD
+# ============================
+- stage: PROD
+  displayName: CD - Prod
+  dependsOn: TEST
+  condition: succeeded()
+
+  jobs:
+  - deployment: DeployProd
+    displayName: Prod Environment
+    environment: Prod
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo "Ready for Prod deployment"
