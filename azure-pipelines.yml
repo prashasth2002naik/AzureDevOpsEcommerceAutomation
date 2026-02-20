@@ -224,7 +224,7 @@ stages:
 # STAGE 2 : DEV (Deploy + Smoke Tests)
 # ============================
 - stage: DEV
-  displayName: CD - Dev (Deploy + Smoke Test)
+  displayName: CD - Dev (Deploy + Smoke Tests)
   dependsOn: CI
   condition: succeeded()
 
@@ -238,35 +238,45 @@ stages:
 
     steps:
 
-    # Validate docker-compose
+    # Validate docker-compose file
     - script: |
-        echo "Validating docker-compose file..."
+        echo "Validating docker-compose.yml"
         docker compose config
-      displayName: Validate docker-compose.yml
+      displayName: Validate docker-compose
 
-    # Check Docker daemon
+    # Pull latest images
     - script: |
-        echo "Checking Docker daemon..."
-        docker info
-      displayName: Check Docker daemon
-
-    # Pull images
-    - script: |
-        echo "Pulling latest images..."
+        echo "Pulling images"
         docker compose pull
       displayName: Pull images
 
     # Deploy containers
     - script: |
-        echo "Deploying containers..."
+        echo "Deploying containers"
         docker compose up -d --remove-orphans
       displayName: Deploy containers
 
-    # Wait for startup
+    # Wait for services to start
     - script: |
-        echo "Waiting for services to start..."
-        sleep 30
-      displayName: Wait for services
+        echo "Waiting for services to start"
+        sleep 40
+      displayName: Wait for startup
+
+    # --------------------
+    # SMOKE TESTS (ROUTE-BASED)
+    # --------------------
+
+    # API Gateway smoke test via real route
+    - script: |
+        echo "Smoke Test: API Gateway → Order Service"
+        curl -f http://localhost:8080/order
+      displayName: Smoke Test - Gateway Route
+
+    # Frontend smoke test
+    - script: |
+        echo "Smoke Test: Frontend"
+        curl -f http://localhost:3000
+      displayName: Smoke Test - Frontend
 
     # --------------------
     # SMOKE TESTS
