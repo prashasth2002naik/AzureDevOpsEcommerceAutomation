@@ -236,35 +236,35 @@ stages:
     steps:
 
     # -------- UNIT TESTS (DEV) --------
-    - task: Maven@3
+    - script: |
+        chmod +x mvnw
+        ./mvnw test
+      workingDirectory: api-gateway
       displayName: API Gateway - Unit Tests (DEV)
-      inputs:
-        mavenPomFile: api-gateway/pom.xml
-        goals: test
 
-    - task: Maven@3
+    - script: |
+        chmod +x mvnw
+        ./mvnw test
+      workingDirectory: eureka-server
       displayName: Eureka - Unit Tests (DEV)
-      inputs:
-        mavenPomFile: eureka-server/pom.xml
-        goals: test
 
-    - task: Maven@3
+    - script: |
+        chmod +x mvnw
+        ./mvnw test
+      workingDirectory: order-service
       displayName: Order Service - Unit Tests (DEV)
-      inputs:
-        mavenPomFile: order-service/pom.xml
-        goals: test
 
-    - task: Maven@3
+    - script: |
+        chmod +x mvnw
+        ./mvnw test
+      workingDirectory: product-service
       displayName: Product Service - Unit Tests (DEV)
-      inputs:
-        mavenPomFile: product-service/pom.xml
-        goals: test
 
-    - task: Maven@3
+    - script: |
+        chmod +x mvnw
+        ./mvnw test
+      workingDirectory: user-service
       displayName: User Service - Unit Tests (DEV)
-      inputs:
-        mavenPomFile: user-service/pom.xml
-        goals: test
 
     - script: |
         npm install
