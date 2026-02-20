@@ -236,25 +236,35 @@ stages:
     steps:
 
     # -------- UNIT TESTS (DEV) --------
-    - script: mvn test
-      workingDirectory: api-gateway
+    - task: Maven@3
       displayName: API Gateway - Unit Tests (DEV)
+      inputs:
+        mavenPomFile: api-gateway/pom.xml
+        goals: test
 
-    - script: mvn test
-      workingDirectory: eureka-server
+    - task: Maven@3
       displayName: Eureka - Unit Tests (DEV)
+      inputs:
+        mavenPomFile: eureka-server/pom.xml
+        goals: test
 
-    - script: mvn test
-      workingDirectory: order-service
+    - task: Maven@3
       displayName: Order Service - Unit Tests (DEV)
+      inputs:
+        mavenPomFile: order-service/pom.xml
+        goals: test
 
-    - script: mvn test
-      workingDirectory: product-service
+    - task: Maven@3
       displayName: Product Service - Unit Tests (DEV)
+      inputs:
+        mavenPomFile: product-service/pom.xml
+        goals: test
 
-    - script: mvn test
-      workingDirectory: user-service
+    - task: Maven@3
       displayName: User Service - Unit Tests (DEV)
+      inputs:
+        mavenPomFile: user-service/pom.xml
+        goals: test
 
     - script: |
         npm install
@@ -277,7 +287,7 @@ stages:
         sleep 40
       displayName: Wait for startup
 
-    # -------- SMOKE TESTS --------
+    # -------- SMOKE TESTS (UNCHANGED) --------
     - script: |
         echo "Smoke Test: API Gateway"
         for i in {1..10}; do
