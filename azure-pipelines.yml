@@ -218,10 +218,10 @@ stages:
         tags: $(Build.BuildId)
 
 # =====================================================
-# STAGE 2 : DEV (Deploy + Smoke Tests ONLY)
+# STAGE 2 : DEV (Unit Tests in Docker + Deploy + Smoke)
 # =====================================================
 - stage: DEV
-  displayName: CD - Dev (Deploy + Smoke Tests)
+  displayName: CD - Dev (Unit Tests + Deploy + Smoke Tests)
   dependsOn: CI
   condition: succeeded()
 
@@ -235,6 +235,43 @@ stages:
 
     steps:
 
+    # -------------------------------------------------
+    # UNIT TESTS (RUN INSIDE DOCKER – NO MAVEN NEEDED)
+    # -------------------------------------------------
+
+    - script: |
+        echo "Running API Gateway unit tests in container"
+        docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+      displayName: API Gateway - Unit Tests (DEV)
+
+    - script: |
+        echo "Running Eureka unit tests in container"
+        docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+      displayName: Eureka - Unit Tests (DEV)
+
+    - script: |
+        echo "Running Order Service unit tests in container"
+        docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+      displayName: Order Service - Unit Tests (DEV)
+
+    - script: |
+        echo "Running Product Service unit tests in container"
+        docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+      displayName: Product Service - Unit Tests (DEV)
+
+    - script: |
+        echo "Running User Service unit tests in container"
+        docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+      displayName: User Service - Unit Tests (DEV)
+
+    - script: |
+        echo "Running Frontend unit tests in container"
+        docker run --rm -v $(pwd)/frontend:/app -w /app node:18 npm test
+      displayName: Frontend - Unit Tests (DEV)
+
+    # -------------------------------------------------
+    # DEPLOY
+    # -------------------------------------------------
     - script: docker compose config
       displayName: Validate docker-compose
 
@@ -249,7 +286,9 @@ stages:
         sleep 40
       displayName: Wait for startup
 
-    # -------- SMOKE TESTS (UNCHANGED) --------
+    # -------------------------------------------------
+    # SMOKE TESTS (UNCHANGED)
+    # -------------------------------------------------
     - script: |
         echo "Smoke Test: API Gateway"
         for i in {1..10}; do
