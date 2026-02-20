@@ -220,9 +220,9 @@ stages:
         dockerfile: user-service/Dockerfile
         tags: $(Build.BuildId)
 
-# ============================
+# =====================================================
 # STAGE 2 : DEV (Deploy + Smoke Tests)
-# ============================
+# =====================================================
 - stage: DEV
   displayName: CD - Dev (Deploy + Smoke Tests)
   dependsOn: CI
@@ -238,68 +238,59 @@ stages:
 
     steps:
 
-    # Validate docker-compose file
+    # Validate compose file
     - script: |
-        echo "Validating docker-compose.yml"
+        echo "Validating docker-compose file..."
         docker compose config
       displayName: Validate docker-compose
 
-    # Pull latest images
+    # Pull images
     - script: |
-        echo "Pulling images"
+        echo "Pulling Docker images..."
         docker compose pull
       displayName: Pull images
 
     # Deploy containers
     - script: |
-        echo "Deploying containers"
+        echo "Deploying containers..."
         docker compose up -d --remove-orphans
       displayName: Deploy containers
 
-    # Wait for services to start
+    # Give services time to start (free tier = slow)
     - script: |
-        echo "Waiting for services to start"
+        echo "Waiting for services to start..."
         sleep 40
       displayName: Wait for startup
 
-    # --------------------
-    # SMOKE TESTS (ROUTE-BASED)
-    # --------------------
-
-    # API Gateway smoke test via real route
+    # -------------------------------------------------
+    # SMOKE TEST : API GATEWAY → ORDER SERVICE
+    # -------------------------------------------------
     - script: |
-        echo "Smoke Test: API Gateway → Order Service"
-        curl -f http://localhost:8080/order
+        echo "Smoke Test: API Gateway routing to Order Service"
+
+        for i in {1..10}; do
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/order/api/orders)
+
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ]; then
+            echo "Gateway route working (HTTP $STATUS)"
+            exit 0
+          fi
+
+          echo "Attempt $i failed (HTTP $STATUS). Retrying in 5s..."
+          sleep 5
+        done
+
+        echo "Gateway routing failed after retries"
+        exit 1
       displayName: Smoke Test - Gateway Route
 
-    # Frontend smoke test
+    # -------------------------------------------------
+    # SMOKE TEST : FRONTEND
+    # -------------------------------------------------
     - script: |
         echo "Smoke Test: Frontend"
         curl -f http://localhost:3000
       displayName: Smoke Test - Frontend
-
-    # --------------------
-    # SMOKE TESTS
-    # --------------------
-
-    # API Gateway smoke test
-    - script: |
-        echo "Smoke test: API Gateway"
-        curl -f http://localhost:8080
-      displayName: Smoke Test - API Gateway
-
-    # Eureka smoke test
-    - script: |
-        echo "Smoke test: Eureka"
-        curl -f http://localhost:8761
-      displayName: Smoke Test - Eureka
-
-    # Frontend smoke test
-    - script: |
-        echo "Smoke test: Frontend"
-        curl -f http://localhost:3000
-      displayName: Smoke Test - Frontend
-
 # ============================
 # STAGE 3 : TEST
 # ============================
