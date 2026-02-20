@@ -239,11 +239,74 @@ stages:
 #     steps:
 #     - script: echo "Deploying images to DEV"
 #       displayName: DEV Deploy
+# # ============================
+# # STAGE : DEV
+# # ============================
+# - stage: DEV
+#   displayName: CD - Dev
+#   dependsOn: CI
+#   condition: succeeded()
+
+#   jobs:
+#   - job: DeployDev
+#     displayName: Deploy to DEV
+#     pool:
+#       name: Default
+#       demands:
+#         - ENV -equals DEV
+
+#     steps:
+
+#     - script: |
+#         echo "Validating docker-compose file..."
+#         docker compose config
+#       displayName: Validate docker-compose.yml
+
+#     - script: |
+#         echo "Checking Docker daemon availability..."
+#         docker info
+#       displayName: Check Docker daemon
+
+#     - script: |
+#         echo "Pulling latest images..."
+#         docker compose pull
+#       displayName: Pull latest Docker images
+
+#     - script: |
+#         echo "Deploying containers cleanly..."
+#         docker compose up -d --remove-orphans
+#       displayName: Deploy containers
+
+#     - script: |
+#         echo "Verifying running containers..."
+#         docker compose ps
+#       displayName: Verify running containers
+
+# # ============================
+# # STAGE 3 : TEST (Agent Pool)
+# # ============================
+# - stage: TEST
+#   displayName: CD - Test
+#   dependsOn: DEV
+#   condition: succeeded()
+
+#   jobs:
+#   - job: DeployTest
+#     displayName: Deploy to TEST
+#     pool:
+#       name: Default
+#       demands:
+#         - ENV -equals TEST
+
+#     steps:
+#     - script: echo "Deploying images to TEST"
+#       displayName: TEST Deploy
+
 # ============================
-# STAGE : DEV
+# STAGE : DEV (Deploy + Smoke Test)
 # ============================
 - stage: DEV
-  displayName: CD - Dev
+  displayName: CD - Dev (Deploy + Smoke Test)
   dependsOn: CI
   condition: succeeded()
 
@@ -257,51 +320,53 @@ stages:
 
     steps:
 
+    # 1. Validate compose file
     - script: |
         echo "Validating docker-compose file..."
         docker compose config
       displayName: Validate docker-compose.yml
 
+    # 2. Check Docker
     - script: |
-        echo "Checking Docker daemon availability..."
+        echo "Checking Docker daemon..."
         docker info
       displayName: Check Docker daemon
 
+    # 3. Pull images
     - script: |
         echo "Pulling latest images..."
         docker compose pull
-      displayName: Pull latest Docker images
+      displayName: Pull images
 
+    # 4. Deploy containers
     - script: |
-        echo "Deploying containers cleanly..."
+        echo "Deploying containers..."
         docker compose up -d --remove-orphans
       displayName: Deploy containers
 
+    # 5. Wait for services to start
     - script: |
-        echo "Verifying running containers..."
-        docker compose ps
-      displayName: Verify running containers
+        echo "Waiting for services to stabilize..."
+        sleep 30
+      displayName: Wait for startup
 
-# ============================
-# STAGE 3 : TEST (Agent Pool)
-# ============================
-- stage: TEST
-  displayName: CD - Test
-  dependsOn: DEV
-  condition: succeeded()
+    # 6. Smoke Test - API Gateway
+    - script: |
+        echo "Smoke test: API Gateway"
+        curl -f http://localhost:8080/actuator/health
+      displayName: Smoke Test - API Gateway
 
-  jobs:
-  - job: DeployTest
-    displayName: Deploy to TEST
-    pool:
-      name: Default
-      demands:
-        - ENV -equals TEST
+    # 7. Smoke Test - Eureka
+    - script: |
+        echo "Smoke test: Eureka"
+        curl -f http://localhost:8761/actuator/health
+      displayName: Smoke Test - Eureka
 
-    steps:
-    - script: echo "Deploying images to TEST"
-      displayName: TEST Deploy
-
+    # 8. Smoke Test - Frontend
+    - script: |
+        echo "Smoke test: Frontend"
+        curl -f http://localhost:3000
+      displayName: Smoke Test - Frontend
 # # ============================
 # # STAGE 4 : PROD (Environment)
 # # ============================
