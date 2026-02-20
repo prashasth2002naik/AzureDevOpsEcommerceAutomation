@@ -216,7 +216,6 @@ stages:
         repository: prashasthnaik/user
         dockerfile: user-service/Dockerfile
         tags: $(Build.BuildId)
-
 # =====================================================
 # STAGE 2 : DEV (Unit Tests in Docker + Deploy + Smoke)
 # =====================================================
@@ -235,43 +234,37 @@ stages:
 
     steps:
 
-    # -------------------------------------------------
-    # UNIT TESTS (RUN INSIDE DOCKER – NO MAVEN NEEDED)
-    # -------------------------------------------------
-
+    # -------- BACKEND UNIT TESTS (IN CONTAINERS) --------
     - script: |
-        echo "Running API Gateway unit tests in container"
         docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: API Gateway - Unit Tests (DEV)
 
     - script: |
-        echo "Running Eureka unit tests in container"
         docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: Eureka - Unit Tests (DEV)
 
     - script: |
-        echo "Running Order Service unit tests in container"
         docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: Order Service - Unit Tests (DEV)
 
     - script: |
-        echo "Running Product Service unit tests in container"
         docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: Product Service - Unit Tests (DEV)
 
     - script: |
-        echo "Running User Service unit tests in container"
         docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: User Service - Unit Tests (DEV)
 
+    # -------- FRONTEND UNIT TESTS (FIXED) --------
     - script: |
-        echo "Running Frontend unit tests in container"
-        docker run --rm -v $(pwd)/frontend:/app -w /app node:18 npm test
+        docker run --rm \
+          -v $(pwd)/frontend:/app \
+          -w /app \
+          node:18 \
+          sh -c "npm install && npm test"
       displayName: Frontend - Unit Tests (DEV)
 
-    # -------------------------------------------------
-    # DEPLOY
-    # -------------------------------------------------
+    # -------- DEPLOY --------
     - script: docker compose config
       displayName: Validate docker-compose
 
@@ -286,48 +279,30 @@ stages:
         sleep 40
       displayName: Wait for startup
 
-    # -------------------------------------------------
-    # SMOKE TESTS (UNCHANGED)
-    # -------------------------------------------------
+    # -------- SMOKE TESTS (UNCHANGED) --------
     - script: |
         echo "Smoke Test: API Gateway"
         for i in {1..10}; do
-          nc -z localhost 8080 && echo "API Gateway is UP" && exit 0
+          nc -z localhost 8080 && exit 0
           sleep 5
         done
         exit 1
       displayName: Smoke Test - API Gateway
 
     - script: |
-        echo "Smoke Test: Frontend"
         curl -f http://localhost:3000
       displayName: Smoke Test - Frontend
 
     - script: |
-        echo "Smoke Test: Order Service"
-        for i in {1..10}; do
-          nc -z localhost 8081 && echo "Order Service is UP" && exit 0
-          sleep 5
-        done
-        exit 1
+        for i in {1..10}; do nc -z localhost 8081 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - Order Service
 
     - script: |
-        echo "Smoke Test: Product Service"
-        for i in {1..10}; do
-          nc -z localhost 8082 && echo "Product Service is UP" && exit 0
-          sleep 5
-        done
-        exit 1
+        for i in {1..10}; do nc -z localhost 8082 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - Product Service
 
     - script: |
-        echo "Smoke Test: User Service"
-        for i in {1..10}; do
-          nc -z localhost 8083 && echo "User Service is UP" && exit 0
-          sleep 5
-        done
-        exit 1
+        for i in {1..10}; do nc -z localhost 8083 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - User Service
 
 # =====================================================
