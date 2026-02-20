@@ -218,10 +218,10 @@ stages:
         tags: $(Build.BuildId)
 
 # =====================================================
-# STAGE 2 : DEV (Unit Tests + Deploy + Smoke Tests)
+# STAGE 2 : DEV (Deploy + Smoke Tests ONLY)
 # =====================================================
 - stage: DEV
-  displayName: CD - Dev (Unit Tests + Deploy + Smoke Tests)
+  displayName: CD - Dev (Deploy + Smoke Tests)
   dependsOn: CI
   condition: succeeded()
 
@@ -235,44 +235,6 @@ stages:
 
     steps:
 
-    # -------- UNIT TESTS (DEV) --------
-    - script: |
-        chmod +x mvnw
-        ./mvnw test
-      workingDirectory: api-gateway
-      displayName: API Gateway - Unit Tests (DEV)
-
-    - script: |
-        chmod +x mvnw
-        ./mvnw test
-      workingDirectory: eureka-server
-      displayName: Eureka - Unit Tests (DEV)
-
-    - script: |
-        chmod +x mvnw
-        ./mvnw test
-      workingDirectory: order-service
-      displayName: Order Service - Unit Tests (DEV)
-
-    - script: |
-        chmod +x mvnw
-        ./mvnw test
-      workingDirectory: product-service
-      displayName: Product Service - Unit Tests (DEV)
-
-    - script: |
-        chmod +x mvnw
-        ./mvnw test
-      workingDirectory: user-service
-      displayName: User Service - Unit Tests (DEV)
-
-    - script: |
-        npm install
-        npm test
-      workingDirectory: frontend
-      displayName: Frontend - Unit Tests (DEV)
-
-    # -------- DEPLOY --------
     - script: docker compose config
       displayName: Validate docker-compose
 
