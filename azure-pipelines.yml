@@ -1,10 +1,239 @@
+# trigger:
+# - main
+
+# stages:
+
+# # ============================
+# # STAGE 1 : CI (Build + Test + Docker Push)
+# # ============================
+# - stage: CI
+#   displayName: CI - Build, Test & Push Images
+#   jobs:
+#   - job: CIJob
+#     displayName: CI Job
+#     pool:
+#       name: Default
+
+#     steps:
+
+#     # -------- API Gateway --------
+#     - script: mvn test
+#       workingDirectory: api-gateway
+#       displayName: API Gateway - Test
+
+#     - task: Docker@2
+#       displayName: API Gateway - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/apigateway
+#         dockerfile: api-gateway/Dockerfile
+#         tags: $(Build.BuildId)
+
+#     # -------- Eureka --------
+#     - script: mvn test
+#       workingDirectory: eureka-server
+#       displayName: Eureka - Test
+
+#     - task: Docker@2
+#       displayName: Eureka - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/eureka
+#         dockerfile: eureka-server/Dockerfile
+#         tags: $(Build.BuildId)
+
+#     # -------- Frontend --------
+#     - script: |
+#         npm install
+#         npm test -- --watch=false
+#       workingDirectory: frontend
+#       displayName: Frontend - Test
+
+#     - task: Docker@2
+#       displayName: Frontend - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/frontend
+#         dockerfile: frontend/Dockerfile
+#         tags: $(Build.BuildId)
+
+#     # -------- Order Service --------
+#     - script: mvn test
+#       workingDirectory: order-service
+#       displayName: Order Service - Test
+
+#     - task: Docker@2
+#       displayName: Order Service - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/order
+#         dockerfile: order-service/Dockerfile
+#         tags: $(Build.BuildId)
+
+#     # -------- Product Service --------
+#     - script: mvn test
+#       workingDirectory: product-service
+#       displayName: Product Service - Test
+
+#     - task: Docker@2
+#       displayName: Product Service - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/product
+#         dockerfile: product-service/Dockerfile
+#         tags: $(Build.BuildId)
+
+#     # -------- User Service --------
+#     - script: mvn test
+#       workingDirectory: user-service
+#       displayName: User Service - Test
+
+#     - task: Docker@2
+#       displayName: User Service - Build & Push
+#       inputs:
+#         command: buildAndPush
+#         containerRegistry: dockerhub
+#         repository: prashasthnaik/user
+#         dockerfile: user-service/Dockerfile
+#         tags: $(Build.BuildId)
+
+# # =====================================================
+# # STAGE 2 : DEV (Unit Tests in Docker + Deploy + Smoke)
+# # =====================================================
+# - stage: DEV
+#   displayName: CD - Dev (Unit Tests + Deploy + Smoke Tests)
+#   dependsOn: CI
+#   condition: succeeded()
+
+#   jobs:
+#   - job: DeployDev
+#     displayName: Deploy to DEV
+#     pool:
+#       name: Default
+#       demands:
+#         - ENV -equals DEV
+
+#     steps:
+
+#     # -------- BACKEND UNIT TESTS (IN DOCKER) --------
+#     - script: |
+#         docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+#       displayName: API Gateway - Unit Tests (DEV)
+
+#     - script: |
+#         docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+#       displayName: Eureka - Unit Tests (DEV)
+
+#     - script: |
+#         docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+#       displayName: Order Service - Unit Tests (DEV)
+
+#     - script: |
+#         docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+#       displayName: Product Service - Unit Tests (DEV)
+
+#     - script: |
+#         docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+#       displayName: User Service - Unit Tests (DEV)
+
+#   ##-------- FRONTEND UNIT TESTS (FIXED) --------
+#     # - script: |
+#     #     docker run --rm \
+#     #       -v $(pwd)/frontend:/app \
+#     #       -w /app \
+#     #       node:18 \
+#     #       sh -c "npm install && npm test -- --watch=false"
+#     #   displayName: Frontend - Unit Tests (DEV)
+
+#     # -------- DEPLOY --------
+#     - script: docker compose config
+#       displayName: Validate docker-compose
+
+#     - script: docker compose pull
+#       displayName: Pull images
+
+#     - script: docker compose up -d --remove-orphans
+#       displayName: Deploy containers
+
+#     - script: |
+#         echo "Waiting for services to start..."
+#         sleep 40
+#       displayName: Wait for startup
+
+#     # -------- SMOKE TESTS (UNCHANGED) --------
+#     - script: |
+#         echo "Smoke Test: API Gateway"
+#         for i in {1..10}; do
+#           nc -z localhost 8080 && echo "API Gateway is UP" && exit 0
+#           sleep 5
+#         done
+#         exit 1
+#       displayName: Smoke Test - API Gateway
+
+#     - script: |
+#         echo "Smoke Test: Frontend"
+#         curl -f http://localhost:3000
+#       displayName: Smoke Test - Frontend
+
+#     - script: |
+#         echo "Smoke Test: Order Service"
+#         for i in {1..10}; do
+#           nc -z localhost 8081 && echo "Order Service is UP" && exit 0
+#           sleep 5
+#         done
+#         exit 1
+#       displayName: Smoke Test - Order Service
+
+#     - script: |
+#         echo "Smoke Test: Product Service"
+#         for i in {1..10}; do
+#           nc -z localhost 8082 && echo "Product Service is UP" && exit 0
+#           sleep 5
+#         done
+#         exit 1
+#       displayName: Smoke Test - Product Service
+
+#     - script: |
+#         echo "Smoke Test: User Service"
+#         for i in {1..10}; do
+#           nc -z localhost 8083 && echo "User Service is UP" && exit 0
+#           sleep 5
+#         done
+#         exit 1
+#       displayName: Smoke Test - User Service
+
+# # =====================================================
+# # STAGE 3 : TEST
+# # =====================================================
+# - stage: TEST
+#   displayName: CD - Test
+#   dependsOn: DEV
+#   condition: succeeded()
+
+#   jobs:
+#   - job: DeployTest
+#     displayName: Deploy to TEST
+#     pool:
+#       name: Default
+#       demands:
+#         - ENV -equals TEST
+
+#     steps:
+#     - script: echo "Deploying to TEST environment"
+#       displayName: TEST Deploy
+
 trigger:
 - main
 
 stages:
 
 # ============================
-# STAGE 1 : CI (Build + Test + Docker Push)
+# STAGE 1 : CI
 # ============================
 - stage: CI
   displayName: CI - Build, Test & Push Images
@@ -102,11 +331,11 @@ stages:
         dockerfile: user-service/Dockerfile
         tags: $(Build.BuildId)
 
-# =====================================================
-# STAGE 2 : DEV (Unit Tests in Docker + Deploy + Smoke)
-# =====================================================
+# ============================
+# STAGE 2 : DEV
+# ============================
 - stage: DEV
-  displayName: CD - Dev (Unit Tests + Deploy + Smoke Tests)
+  displayName: CD - Dev (Unit Tests + Deploy + Smoke)
   dependsOn: CI
   condition: succeeded()
 
@@ -121,34 +350,37 @@ stages:
     steps:
 
     # -------- BACKEND UNIT TESTS (IN DOCKER) --------
-    - script: |
-        docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+    - script: docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: API Gateway - Unit Tests (DEV)
 
-    - script: |
-        docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+    - script: docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: Eureka - Unit Tests (DEV)
 
-    - script: |
-        docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+    - script: docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: Order Service - Unit Tests (DEV)
 
-    - script: |
-        docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+    - script: docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: Product Service - Unit Tests (DEV)
 
-    - script: |
-        docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+    - script: docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: User Service - Unit Tests (DEV)
 
-  ##-------- FRONTEND UNIT TESTS (FIXED) --------
-    # - script: |
-    #     docker run --rm \
-    #       -v $(pwd)/frontend:/app \
-    #       -w /app \
-    #       node:18 \
-    #       sh -c "npm install && npm test -- --watch=false"
-    #   displayName: Frontend - Unit Tests (DEV)
+    # -------- FRONTEND CONTAINER CHECK --------
+    - script: |
+        echo "Starting frontend container..."
+        docker run -d --name frontend-test -p 3000:3000 prashasthnaik/frontend:$(Build.BuildId)
+
+        echo "Waiting for frontend to start..."
+        sleep 20
+
+        echo "Checking frontend with curl..."
+        curl -f http://localhost:3000
+      displayName: Frontend - Container Port Check (DEV)
+
+    - script: |
+        docker rm -f frontend-test || true
+      displayName: Cleanup Frontend Test Container
+      condition: always()
 
     # -------- DEPLOY --------
     - script: docker compose config
@@ -165,51 +397,29 @@ stages:
         sleep 40
       displayName: Wait for startup
 
-    # -------- SMOKE TESTS (UNCHANGED) --------
+    # -------- SMOKE TESTS --------
     - script: |
-        echo "Smoke Test: API Gateway"
-        for i in {1..10}; do
-          nc -z localhost 8080 && echo "API Gateway is UP" && exit 0
-          sleep 5
-        done
-        exit 1
+        for i in {1..10}; do nc -z localhost 8080 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - API Gateway
 
-    - script: |
-        echo "Smoke Test: Frontend"
-        curl -f http://localhost:3000
+    - script: curl -f http://localhost:3000
       displayName: Smoke Test - Frontend
 
     - script: |
-        echo "Smoke Test: Order Service"
-        for i in {1..10}; do
-          nc -z localhost 8081 && echo "Order Service is UP" && exit 0
-          sleep 5
-        done
-        exit 1
+        for i in {1..10}; do nc -z localhost 8081 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - Order Service
 
     - script: |
-        echo "Smoke Test: Product Service"
-        for i in {1..10}; do
-          nc -z localhost 8082 && echo "Product Service is UP" && exit 0
-          sleep 5
-        done
-        exit 1
+        for i in {1..10}; do nc -z localhost 8082 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - Product Service
 
     - script: |
-        echo "Smoke Test: User Service"
-        for i in {1..10}; do
-          nc -z localhost 8083 && echo "User Service is UP" && exit 0
-          sleep 5
-        done
-        exit 1
+        for i in {1..10}; do nc -z localhost 8083 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - User Service
 
-# =====================================================
+# ============================
 # STAGE 3 : TEST
-# =====================================================
+# ============================
 - stage: TEST
   displayName: CD - Test
   dependsOn: DEV
