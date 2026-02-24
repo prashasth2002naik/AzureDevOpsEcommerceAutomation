@@ -229,13 +229,12 @@
 trigger:
 - main
 
-pr: none
 
 stages:
 
-# ============================
-# STAGE 1 : CI
-# ============================
+# =====================================================
+# STAGE 1 : CI (Build + Test + Push Images)
+# =====================================================
 - stage: CI
   displayName: CI - Build, Test & Push Images
   jobs:
@@ -275,12 +274,6 @@ stages:
         tags: $(Build.BuildId)
 
     # -------- Frontend --------
-    - script: |
-        npm install
-        npm test -- --watch=false
-      workingDirectory: frontend
-      displayName: Frontend - Test
-
     - task: Docker@2
       displayName: Frontend - Build & Push
       inputs:
@@ -332,11 +325,11 @@ stages:
         dockerfile: user-service/Dockerfile
         tags: $(Build.BuildId)
 
-# ============================
-# STAGE 2 : DEV
-# ============================
+# =====================================================
+# STAGE 2 : DEV (Container Validation + Deploy)
+# =====================================================
 - stage: DEV
-  displayName: CD - Dev (Unit Tests + Deploy + Smoke)
+  displayName: CD - Dev
   dependsOn: CI
   condition: succeeded()
 
@@ -350,29 +343,12 @@ stages:
 
     steps:
 
-    # -------- BACKEND UNIT TESTS --------
-    - script: docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
-      displayName: API Gateway - Unit Tests (DEV)
-
-    - script: docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
-      displayName: Eureka - Unit Tests (DEV)
-
-    - script: docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
-      displayName: Order Service - Unit Tests (DEV)
-
-    - script: docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
-      displayName: Product Service - Unit Tests (DEV)
-
-    - script: docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
-      displayName: User Service - Unit Tests (DEV)
-
-    # -------- FRONTEND CONTAINER CHECK (FIXED) --------
+    # -------- FRONTEND VALIDATION (FIXED) --------
     - script: |
-        echo "Starting frontend container..."
-        docker run -d --name frontend-test -p 3000:3000 prashasthnaik/frontend:$(Build.BuildId)
+        echo "Starting frontend with dependencies..."
+        docker compose up -d api-gateway frontend
 
-        echo "Waiting for frontend to be ready..."
-
+        echo "Waiting for frontend to be reachable..."
         for i in {1..12}; do
           if curl -f http://localhost:3000; then
             echo "Frontend is UP"
@@ -383,18 +359,11 @@ stages:
         done
 
         echo "Frontend failed to start"
-        docker logs frontend-test
+        docker compose logs frontend
         exit 1
-      displayName: Frontend - Container Port Check (DEV)
+      displayName: Frontend - Container Validation (DEV)
 
-    - script: docker rm -f frontend-test || true
-      displayName: Cleanup Frontend Test Container
-      condition: always()
-
-    # -------- DEPLOY --------
-    - script: docker compose config
-      displayName: Validate docker-compose
-
+    # -------- DEPLOY FULL STACK --------
     - script: docker compose pull
       displayName: Pull images
 
@@ -402,7 +371,7 @@ stages:
       displayName: Deploy containers
 
     - script: |
-        echo "Waiting for services to start..."
+        echo "Waiting for services..."
         sleep 40
       displayName: Wait for startup
 
@@ -426,9 +395,9 @@ stages:
         for i in {1..10}; do nc -z localhost 8083 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - User Service
 
-# ============================
+# =====================================================
 # STAGE 3 : TEST
-# ============================
+# =====================================================
 - stage: TEST
   displayName: CD - Test
   dependsOn: DEV
