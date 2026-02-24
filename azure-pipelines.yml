@@ -230,8 +230,7 @@
 trigger:
 - main
 
-pr:
-- main
+pr: none
 
 stages:
 
