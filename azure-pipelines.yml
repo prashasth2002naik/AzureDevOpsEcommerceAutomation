@@ -226,7 +226,6 @@
 #     steps:
 #     - script: echo "Deploying to TEST environment"
 #       displayName: TEST Deploy
-
 trigger:
 - main
 
@@ -351,7 +350,7 @@ stages:
 
     steps:
 
-    # -------- BACKEND UNIT TESTS (IN DOCKER) --------
+    # -------- BACKEND UNIT TESTS --------
     - script: docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: API Gateway - Unit Tests (DEV)
 
@@ -367,20 +366,28 @@ stages:
     - script: docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: User Service - Unit Tests (DEV)
 
-    # -------- FRONTEND CONTAINER CHECK --------
+    # -------- FRONTEND CONTAINER CHECK (FIXED) --------
     - script: |
         echo "Starting frontend container..."
         docker run -d --name frontend-test -p 3000:3000 prashasthnaik/frontend:$(Build.BuildId)
 
-        echo "Waiting for frontend to start..."
-        sleep 20
+        echo "Waiting for frontend to be ready..."
 
-        echo "Checking frontend with curl..."
-        curl -f http://localhost:3000
+        for i in {1..12}; do
+          if curl -f http://localhost:3000; then
+            echo "Frontend is UP"
+            exit 0
+          fi
+          echo "Not ready yet... retrying in 5s"
+          sleep 5
+        done
+
+        echo "Frontend failed to start"
+        docker logs frontend-test
+        exit 1
       displayName: Frontend - Container Port Check (DEV)
 
-    - script: |
-        docker rm -f frontend-test || true
+    - script: docker rm -f frontend-test || true
       displayName: Cleanup Frontend Test Container
       condition: always()
 
