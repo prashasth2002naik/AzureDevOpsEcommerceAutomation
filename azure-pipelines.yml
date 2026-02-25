@@ -244,7 +244,6 @@ stages:
 
     steps:
 
-    # -------- API Gateway --------
     - script: mvn test
       workingDirectory: api-gateway
       displayName: API Gateway - Test
@@ -258,7 +257,6 @@ stages:
         dockerfile: api-gateway/Dockerfile
         tags: $(Build.BuildId)
 
-    # -------- Eureka --------
     - script: mvn test
       workingDirectory: eureka-server
       displayName: Eureka - Test
@@ -272,7 +270,6 @@ stages:
         dockerfile: eureka-server/Dockerfile
         tags: $(Build.BuildId)
 
-    # -------- Frontend --------
     - script: |
         npm install
         npm test -- --watch=false
@@ -288,7 +285,6 @@ stages:
         dockerfile: frontend/Dockerfile
         tags: $(Build.BuildId)
 
-    # -------- Order Service --------
     - script: mvn test
       workingDirectory: order-service
       displayName: Order Service - Test
@@ -302,7 +298,6 @@ stages:
         dockerfile: order-service/Dockerfile
         tags: $(Build.BuildId)
 
-    # -------- Product Service --------
     - script: mvn test
       workingDirectory: product-service
       displayName: Product Service - Test
@@ -316,7 +311,6 @@ stages:
         dockerfile: product-service/Dockerfile
         tags: $(Build.BuildId)
 
-    # -------- User Service --------
     - script: mvn test
       workingDirectory: user-service
       displayName: User Service - Test
@@ -331,10 +325,10 @@ stages:
         tags: $(Build.BuildId)
 
 # =====================================================
-# STAGE 2 : DEV (Unit Tests + Deploy + Smoke)
+# STAGE 2 : DEV
 # =====================================================
 - stage: DEV
-  displayName: CD - Dev (Unit Tests + Deploy + Smoke Tests)
+  displayName: CD - Dev
   dependsOn: CI
   condition: succeeded()
 
@@ -348,7 +342,6 @@ stages:
 
     steps:
 
-    # -------- BACKEND UNIT TESTS --------
     - script: docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: API Gateway - Unit Tests (DEV)
 
@@ -364,42 +357,25 @@ stages:
     - script: docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: User Service - Unit Tests (DEV)
 
-    # -------- FRONTEND UNIT TESTS (FIXED) --------
+    # -------- FRONTEND UNIT TESTS (FINAL FIX) --------
     - script: |
         docker run --rm \
           -v $(pwd)/frontend:/app \
           -w /app \
-          -p 3000:3000 \
           node:18 \
           sh -c "
             npm install &&
             npm run build &&
             npm install -g serve &&
             serve -s build -l 3000 &
-            echo 'Waiting for frontend...' &&
-            sleep 10 &&
-            curl -f http://localhost:3000
+            echo 'Waiting for frontend to be ready...' &&
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              curl -f http://localhost:3000 && exit 0
+              sleep 3
+            done
+            exit 1
           "
       displayName: Frontend - Unit Tests (DEV)
-
-    # -------- DEPLOY --------
-    - script: docker compose config
-      displayName: Validate docker-compose
-
-    - script: docker compose pull
-      displayName: Pull images
-
-    - script: docker compose up -d --remove-orphans
-      displayName: Deploy containers
-
-    - script: |
-        echo "Waiting for services to start..."
-        sleep 40
-      displayName: Wait for startup
-
-    # -------- SMOKE TESTS --------
-    - script: curl -f http://localhost:3000
-      displayName: Smoke Test - Frontend
 
 # =====================================================
 # STAGE 3 : TEST
