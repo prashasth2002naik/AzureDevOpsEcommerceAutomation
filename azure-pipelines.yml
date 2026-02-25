@@ -436,14 +436,21 @@ stages:
 
     steps:
     - script: |
+        echo "Waiting for API Gateway to be ready..."
+
+        for i in 1 2 3 4 5 6 7 8 9 10; do
+          curl -f http://localhost:8080 && break
+          sleep 5
+        done || exit 1
+
         echo "Integration Test: Product Service"
-        curl -f http://localhost:8080/api/products
+        curl -f http://localhost:8080/api/products || exit 1
 
         echo "Integration Test: Order Service"
-        curl -f http://localhost:8080/api/orders
+        curl -f http://localhost:8080/api/orders || exit 1
 
         echo "Integration Test: User Service"
-        curl -f http://localhost:8080/api/users
+        curl -f http://localhost:8080/api/users || exit 1
 
         echo "ALL INTEGRATION TESTS PASSED"
       displayName: Integration Tests - curl
