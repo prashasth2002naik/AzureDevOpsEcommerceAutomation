@@ -422,6 +422,9 @@ stages:
 # =====================================================
 # STAGE 3 : TEST (Integration Tests)
 # =====================================================
+# =====================================================
+# STAGE 3 : TEST (Integration Tests)
+# =====================================================
 - stage: TEST
   displayName: CD - Test (Integration Tests)
   dependsOn: DEV
@@ -440,69 +443,53 @@ stages:
     # -------------------------------
     # 1. Start services for TEST
     # -------------------------------
-    - task: PowerShell@2
+    - script: |
+        echo Starting services for TEST environment
+        docker compose up -d
       displayName: Start services (TEST)
-      inputs:
-        targetType: inline
-        script: |
-          Write-Host "Starting services for TEST environment"
-          docker compose up -d
 
     # -------------------------------
     # 2. Wait for API Gateway
     # -------------------------------
-    - task: PowerShell@2
+    - script: |
+        echo Waiting for API Gateway on port 8080...
+        set READY=0
+
+        for /L %%i in (1,1,12) do (
+          curl http://localhost:8080 >nul 2>&1 && set READY=1 && goto :done
+          timeout /t 5 >nul
+        )
+
+        :done
+        if "%READY%"=="0" (
+          echo API Gateway not reachable
+          exit /b 1
+        )
+
+        echo API Gateway is ready
       displayName: Wait for API Gateway
-      inputs:
-        targetType: inline
-        script: |
-          Write-Host "Waiting for API Gateway on port 8080..."
-
-          $ready = $false
-          for ($i = 1; $i -le 12; $i++) {
-            try {
-              curl http://localhost:8080 -UseBasicParsing | Out-Null
-              $ready = $true
-              break
-            } catch {
-              Start-Sleep -Seconds 5
-            }
-          }
-
-          if (-not $ready) {
-            Write-Error "API Gateway not reachable in TEST"
-            exit 1
-          }
-
-          Write-Host "API Gateway is ready"
 
     # -------------------------------
     # 3. Integration Tests (curl)
     # -------------------------------
-    - task: PowerShell@2
+    - script: |
+        echo Integration Test: Product Service
+        curl http://localhost:8080/api/products || exit /b 1
+
+        echo Integration Test: Order Service
+        curl http://localhost:8080/api/orders || exit /b 1
+
+        echo Integration Test: User Service
+        curl http://localhost:8080/api/users || exit /b 1
+
+        echo ALL INTEGRATION TESTS PASSED
       displayName: Integration Tests - curl
-      inputs:
-        targetType: inline
-        script: |
-          Write-Host "Integration Test: Product Service"
-          curl http://localhost:8080/api/products -UseBasicParsing | Out-Null
-
-          Write-Host "Integration Test: Order Service"
-          curl http://localhost:8080/api/orders -UseBasicParsing | Out-Null
-
-          Write-Host "Integration Test: User Service"
-          curl http://localhost:8080/api/users -UseBasicParsing | Out-Null
-
-          Write-Host "ALL INTEGRATION TESTS PASSED"
 
     # -------------------------------
     # 4. Cleanup TEST environment
     # -------------------------------
-    - task: PowerShell@2
+    - script: |
+        echo Stopping TEST services
+        docker compose down
       displayName: Cleanup TEST environment
       condition: always()
-      inputs:
-        targetType: inline
-        script: |
-          Write-Host "Stopping TEST services"
-          docker compose down
