@@ -424,18 +424,26 @@ stages:
 # STAGE 3 : TEST
 # =====================================================
 - stage: TEST
-  displayName: CD - Test
+  displayName: CD - Test (Integration Tests)
   dependsOn: DEV
   condition: succeeded()
 
   jobs:
-  - job: DeployTest
-    displayName: Deploy to TEST
+  - job: IntegrationTests
+    displayName: Integration Tests
     pool:
       name: Default
-      demands:
-        - ENV -equals TEST
 
     steps:
-    - script: echo "Deploying to TEST environment"
-      displayName: TEST Deploy
+    - script: |
+        echo "Integration Test: Product Service"
+        curl -f http://localhost:8080/api/products
+
+        echo "Integration Test: Order Service"
+        curl -f http://localhost:8080/api/orders
+
+        echo "Integration Test: User Service"
+        curl -f http://localhost:8080/api/users
+
+        echo "ALL INTEGRATION TESTS PASSED"
+      displayName: Integration Tests - curl
