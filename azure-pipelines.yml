@@ -433,13 +433,22 @@ stages:
     displayName: Integration Tests
     pool:
       name: Default
+      demands:
+        - ENV -equals TEST
 
     steps:
+    # 1️⃣ Start services for TEST
     - powershell: |
-        Write-Host "Waiting for API Gateway to be ready..."
+        Write-Host "Starting services for TEST environment"
+        docker compose up -d
+      displayName: Start services (TEST)
+
+    # 2️⃣ Wait for API Gateway
+    - powershell: |
+        Write-Host "Waiting for API Gateway..."
 
         $ready = $false
-        for ($i = 1; $i -le 10; $i++) {
+        for ($i = 1; $i -le 12; $i++) {
           try {
             curl http://localhost:8080 -UseBasicParsing | Out-Null
             $ready = $true
@@ -450,10 +459,13 @@ stages:
         }
 
         if (-not $ready) {
-          Write-Error "API Gateway not reachable"
+          Write-Error "API Gateway not reachable in TEST"
           exit 1
         }
+      displayName: Wait for API Gateway
 
+    # 3️⃣ Integration tests
+    - powershell: |
         Write-Host "Integration Test: Product Service"
         curl http://localhost:8080/api/products -UseBasicParsing | Out-Null
 
@@ -464,4 +476,11 @@ stages:
         curl http://localhost:8080/api/users -UseBasicParsing | Out-Null
 
         Write-Host "ALL INTEGRATION TESTS PASSED"
-      displayName: Integration Tests - curl (PowerShell)
+      displayName: Integration Tests - curl
+
+    # 4️⃣ Cleanup (recommended)
+    - powershell: |
+        Write-Host "Stopping TEST services"
+        docker compose down
+      displayName: Cleanup TEST environment
+      condition: always()
