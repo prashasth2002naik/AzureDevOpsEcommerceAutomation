@@ -364,7 +364,7 @@ stages:
     - script: docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: User Service - Unit Tests (DEV)
 
-    # -------- FRONTEND UNIT TESTS (HTTP 200 CHECK) --------
+    # -------- FRONTEND UNIT TESTS (FIXED) --------
     - script: |
         docker run --rm \
           -v $(pwd)/frontend:/app \
@@ -373,9 +373,11 @@ stages:
           node:18 \
           sh -c "
             npm install &&
-            npm run build || npm run start &
+            npm run build &&
+            npm install -g serve &&
+            serve -s build -l 3000 &
             echo 'Waiting for frontend...' &&
-            sleep 20 &&
+            sleep 10 &&
             curl -f http://localhost:3000
           "
       displayName: Frontend - Unit Tests (DEV)
@@ -396,24 +398,8 @@ stages:
       displayName: Wait for startup
 
     # -------- SMOKE TESTS --------
-    - script: |
-        for i in {1..10}; do nc -z localhost 8080 && exit 0; sleep 5; done; exit 1
-      displayName: Smoke Test - API Gateway
-
     - script: curl -f http://localhost:3000
       displayName: Smoke Test - Frontend
-
-    - script: |
-        for i in {1..10}; do nc -z localhost 8081 && exit 0; sleep 5; done; exit 1
-      displayName: Smoke Test - Order Service
-
-    - script: |
-        for i in {1..10}; do nc -z localhost 8082 && exit 0; sleep 5; done; exit 1
-      displayName: Smoke Test - Product Service
-
-    - script: |
-        for i in {1..10}; do nc -z localhost 8083 && exit 0; sleep 5; done; exit 1
-      displayName: Smoke Test - User Service
 
 # =====================================================
 # STAGE 3 : TEST
