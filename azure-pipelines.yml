@@ -435,22 +435,33 @@ stages:
       name: Default
 
     steps:
-    - script: |
-        echo "Waiting for API Gateway to be ready..."
+    - powershell: |
+        Write-Host "Waiting for API Gateway to be ready..."
 
-        for i in 1 2 3 4 5 6 7 8 9 10; do
-          curl -f http://localhost:8080 && break
-          sleep 5
-        done || exit 1
+        $ready = $false
+        for ($i = 1; $i -le 10; $i++) {
+          try {
+            curl http://localhost:8080 -UseBasicParsing | Out-Null
+            $ready = $true
+            break
+          } catch {
+            Start-Sleep -Seconds 5
+          }
+        }
 
-        echo "Integration Test: Product Service"
-        curl -f http://localhost:8080/api/products || exit 1
+        if (-not $ready) {
+          Write-Error "API Gateway not reachable"
+          exit 1
+        }
 
-        echo "Integration Test: Order Service"
-        curl -f http://localhost:8080/api/orders || exit 1
+        Write-Host "Integration Test: Product Service"
+        curl http://localhost:8080/api/products -UseBasicParsing | Out-Null
 
-        echo "Integration Test: User Service"
-        curl -f http://localhost:8080/api/users || exit 1
+        Write-Host "Integration Test: Order Service"
+        curl http://localhost:8080/api/orders -UseBasicParsing | Out-Null
 
-        echo "ALL INTEGRATION TESTS PASSED"
-      displayName: Integration Tests - curl
+        Write-Host "Integration Test: User Service"
+        curl http://localhost:8080/api/users -UseBasicParsing | Out-Null
+
+        Write-Host "ALL INTEGRATION TESTS PASSED"
+      displayName: Integration Tests - curl (PowerShell)
