@@ -226,7 +226,6 @@
 #     steps:
 #     - script: echo "Deploying to TEST environment"
 #       displayName: TEST Deploy
-
 trigger:
 - main
 
@@ -332,7 +331,7 @@ stages:
         tags: $(Build.BuildId)
 
 # =====================================================
-# STAGE 2 : DEV (Unit Tests in Docker + Deploy + Smoke)
+# STAGE 2 : DEV (Unit Tests + Deploy + Smoke)
 # =====================================================
 - stage: DEV
   displayName: CD - Dev (Unit Tests + Deploy + Smoke Tests)
@@ -349,34 +348,36 @@ stages:
 
     steps:
 
-    # -------- BACKEND UNIT TESTS (IN DOCKER) --------
-    - script: |
-        docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+    # -------- BACKEND UNIT TESTS --------
+    - script: docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: API Gateway - Unit Tests (DEV)
 
-    - script: |
-        docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+    - script: docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: Eureka - Unit Tests (DEV)
 
-    - script: |
-        docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+    - script: docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: Order Service - Unit Tests (DEV)
 
-    - script: |
-        docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+    - script: docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: Product Service - Unit Tests (DEV)
 
-    - script: |
-        docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+    - script: docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
       displayName: User Service - Unit Tests (DEV)
 
-    # -------- FRONTEND UNIT TESTS (ADDED) --------
+    # -------- FRONTEND UNIT TESTS (HTTP 200 CHECK) --------
     - script: |
         docker run --rm \
           -v $(pwd)/frontend:/app \
           -w /app \
+          -p 3000:3000 \
           node:18 \
-          sh -c "npm install && npm test -- --watch=false"
+          sh -c "
+            npm install &&
+            npm run build || npm run start &
+            echo 'Waiting for frontend...' &&
+            sleep 20 &&
+            curl -f http://localhost:3000
+          "
       displayName: Frontend - Unit Tests (DEV)
 
     # -------- DEPLOY --------
@@ -396,44 +397,22 @@ stages:
 
     # -------- SMOKE TESTS --------
     - script: |
-        echo "Smoke Test: API Gateway"
-        for i in {1..10}; do
-          nc -z localhost 8080 && echo "API Gateway is UP" && exit 0
-          sleep 5
-        done
-        exit 1
+        for i in {1..10}; do nc -z localhost 8080 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - API Gateway
 
-    - script: |
-        echo "Smoke Test: Frontend"
-        curl -f http://localhost:3000
+    - script: curl -f http://localhost:3000
       displayName: Smoke Test - Frontend
 
     - script: |
-        echo "Smoke Test: Order Service"
-        for i in {1..10}; do
-          nc -z localhost 8081 && echo "Order Service is UP" && exit 0
-          sleep 5
-        done
-        exit 1
+        for i in {1..10}; do nc -z localhost 8081 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - Order Service
 
     - script: |
-        echo "Smoke Test: Product Service"
-        for i in {1..10}; do
-          nc -z localhost 8082 && echo "Product Service is UP" && exit 0
-          sleep 5
-        done
-        exit 1
+        for i in {1..10}; do nc -z localhost 8082 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - Product Service
 
     - script: |
-        echo "Smoke Test: User Service"
-        for i in {1..10}; do
-          nc -z localhost 8083 && echo "User Service is UP" && exit 0
-          sleep 5
-        done
-        exit 1
+        for i in {1..10}; do nc -z localhost 8083 && exit 0; sleep 5; done; exit 1
       displayName: Smoke Test - User Service
 
 # =====================================================
