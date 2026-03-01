@@ -422,9 +422,6 @@ stages:
 # =====================================================
 # STAGE 3 : TEST (Integration Tests)
 # =====================================================
-# =====================================================
-# STAGE 3 : TEST (Integration Tests)
-# =====================================================
 - stage: TEST
   displayName: CD - Test (Integration Tests)
   dependsOn: DEV
@@ -444,7 +441,7 @@ stages:
     # 1. Start services for TEST
     # -------------------------------
     - script: |
-        echo Starting services for TEST environment
+        echo "Starting services for TEST environment"
         docker compose up -d
       displayName: Start services (TEST)
 
@@ -452,44 +449,45 @@ stages:
     # 2. Wait for API Gateway
     # -------------------------------
     - script: |
-        echo Waiting for API Gateway on port 8080...
-        set READY=0
+        echo "Waiting for API Gateway on port 8080..."
 
-        for /L %%i in (1,1,12) do (
-          curl http://localhost:8080 >nul 2>&1 && set READY=1 && goto :done
-          timeout /t 5 >nul
-        )
+        for i in {1..12}
+        do
+          if curl -f http://localhost:8080 > /dev/null 2>&1
+          then
+            echo "API Gateway is ready"
+            exit 0
+          fi
 
-        :done
-        if "%READY%"=="0" (
-          echo API Gateway not reachable
-          exit /b 1
-        )
+          echo "Retrying in 5 seconds..."
+          sleep 5
+        done
 
-        echo API Gateway is ready
+        echo "API Gateway not reachable"
+        exit 1
       displayName: Wait for API Gateway
 
     # -------------------------------
-    # 3. Integration Tests (curl)
+    # 3. Integration Tests
     # -------------------------------
     - script: |
-        echo Integration Test: Product Service
-        curl http://localhost:8080/api/products || exit /b 1
+        echo "Integration Test: Product Service"
+        curl -f http://localhost:8080/api/products
 
-        echo Integration Test: Order Service
-        curl http://localhost:8080/api/orders || exit /b 1
+        echo "Integration Test: Order Service"
+        curl -f http://localhost:8080/api/orders
 
-        echo Integration Test: User Service
-        curl http://localhost:8080/api/users || exit /b 1
+        echo "Integration Test: User Service"
+        curl -f http://localhost:8080/api/users
 
-        echo ALL INTEGRATION TESTS PASSED
+        echo "ALL INTEGRATION TESTS PASSED"
       displayName: Integration Tests - curl
 
     # -------------------------------
     # 4. Cleanup TEST environment
     # -------------------------------
     - script: |
-        echo Stopping TEST services
+        echo "Stopping TEST services"
         docker compose down
       displayName: Cleanup TEST environment
       condition: always()
