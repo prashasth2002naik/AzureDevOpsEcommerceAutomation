@@ -228,16 +228,13 @@ stages:
     # 1️⃣ Start Services
     # ---------------------------------
     - script: |
-        echo "====================================="
         echo "Starting TEST environment services..."
-        echo "====================================="
         docker compose up -d
-        echo "Containers running:"
         docker ps
       displayName: Start services (TEST)
 
     # ---------------------------------
-    # 2️⃣ Wait for API Gateway
+    # 2️⃣ Wait for API Gateway Port
     # ---------------------------------
     - script: |
         echo "Waiting for API Gateway to open port 8080..."
@@ -252,7 +249,7 @@ stages:
 
           if nc -z localhost 8080
           then
-            echo "✅ API Gateway port 8080 is OPEN"
+            echo "API Gateway port 8080 is OPEN"
             exit 0
           fi
 
@@ -260,7 +257,7 @@ stages:
           COUNT=$((COUNT+1))
         done
 
-        echo "❌ API Gateway did not open port 8080"
+        echo "API Gateway did not open port 8080"
         docker ps
         docker logs api-gateway || true
         exit 1
@@ -270,27 +267,26 @@ stages:
     # 3️⃣ Integration Tests (UNCHANGED)
     # ---------------------------------
     - script: |
-        echo "====================================="
-        echo "Running Integration Tests"
-        echo "====================================="
+        echo "Running Integration Tests..."
 
         curl -f http://localhost:8080/api/products
         curl -f http://localhost:8080/api/orders
         curl -f http://localhost:8080/api/users
 
-        echo "✅ Integration Tests PASSED"
+        echo "Integration Tests PASSED"
       displayName: Integration Tests
 
     # ---------------------------------
-    # 4️⃣ Load Test (k6) - FIXED
+    # 4️⃣ Load Test (k6) - FIXED PATH
     # ---------------------------------
     - script: |
-        echo "====================================="
-        echo "Running k6 Load Test"
-        echo "====================================="
+        echo "Running k6 Load Test..."
+
+        # Verify file exists
+        ls -la $(Build.SourcesDirectory)
 
         docker run --rm \
-          -v $(System.DefaultWorkingDirectory)/loadtest.js:/scripts/loadtest.js \
+          -v $(Build.SourcesDirectory)/loadtest.js:/scripts/loadtest.js:ro \
           --network host \
           grafana/k6 run /scripts/loadtest.js
       displayName: Load Test (k6)
