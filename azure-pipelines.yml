@@ -419,6 +419,7 @@ stages:
         done
         exit 1
       displayName: Smoke Test - User Service
+
 # =====================================================
 # STAGE 3 : TEST (Integration Tests)
 # =====================================================
