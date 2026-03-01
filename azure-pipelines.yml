@@ -206,7 +206,7 @@ stages:
         done
         exit 1
       displayName: Smoke Test - User Service
-      # =====================================================
+# =====================================================
 # STAGE 3 : TEST (Integration + Load Tests)
 # =====================================================
 - stage: TEST
@@ -228,8 +228,11 @@ stages:
     # 1️⃣ Start Services
     # ---------------------------------
     - script: |
+        echo "====================================="
         echo "Starting TEST environment services..."
+        echo "====================================="
         docker compose up -d
+        echo "Containers running:"
         docker ps
       displayName: Start services (TEST)
 
@@ -239,43 +242,55 @@ stages:
     - script: |
         echo "Waiting for API Gateway to open port 8080..."
 
-        for i in {1..24}
+        MAX_RETRIES=24
+        RETRY_DELAY=5
+        COUNT=1
+
+        while [ $COUNT -le $MAX_RETRIES ]
         do
+          echo "Attempt $COUNT of $MAX_RETRIES..."
+
           if nc -z localhost 8080
           then
-            echo "API Gateway is READY"
+            echo "✅ API Gateway port 8080 is OPEN"
             exit 0
           fi
-          sleep 5
+
+          sleep $RETRY_DELAY
+          COUNT=$((COUNT+1))
         done
 
-        echo "API Gateway failed to start"
+        echo "❌ API Gateway did not open port 8080"
         docker ps
         docker logs api-gateway || true
         exit 1
       displayName: Wait for API Gateway
 
     # ---------------------------------
-    # 3️⃣ Integration Tests
+    # 3️⃣ Integration Tests (UNCHANGED)
     # ---------------------------------
     - script: |
-        echo "Running Integration Tests..."
+        echo "====================================="
+        echo "Running Integration Tests"
+        echo "====================================="
 
         curl -f http://localhost:8080/api/products
         curl -f http://localhost:8080/api/orders
         curl -f http://localhost:8080/api/users
 
-        echo "Integration Tests PASSED"
+        echo "✅ Integration Tests PASSED"
       displayName: Integration Tests
 
     # ---------------------------------
-    # 4️⃣ Load Test (k6)
+    # 4️⃣ Load Test (k6) - FIXED
     # ---------------------------------
     - script: |
-        echo "Running k6 Load Test..."
+        echo "====================================="
+        echo "Running k6 Load Test"
+        echo "====================================="
 
         docker run --rm \
-          -v $(pwd)/loadtest.js:/scripts/loadtest.js \
+          -v $(System.DefaultWorkingDirectory)/loadtest.js:/scripts/loadtest.js \
           --network host \
           grafana/k6 run /scripts/loadtest.js
       displayName: Load Test (k6)
