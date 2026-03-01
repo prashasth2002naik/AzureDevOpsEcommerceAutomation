@@ -224,28 +224,18 @@ stages:
 
     steps:
 
-    # -------------------------------
-    # 1. Start services
-    # -------------------------------
+    # 1️⃣ Start services
     - script: |
-        echo "====================================="
         echo "Starting TEST environment services..."
-        echo "====================================="
         docker compose up -d
-
-        echo "Running containers:"
         docker ps
       displayName: Start services (TEST)
 
-    # -------------------------------
-    # 2. Wait for API Gateway
-    # -------------------------------
+    # 2️⃣ Wait for API Gateway (FIXED)
     - script: |
-        echo "====================================="
-        echo "Waiting for API Gateway on port 8080"
-        echo "====================================="
+        echo "Waiting for API Gateway health endpoint..."
 
-        MAX_RETRIES=24   # 24 x 5 sec = 2 minutes
+        MAX_RETRIES=24
         RETRY_DELAY=5
         COUNT=1
 
@@ -253,7 +243,7 @@ stages:
         do
           echo "Attempt $COUNT of $MAX_RETRIES..."
 
-          if curl -f http://localhost:8080 > /dev/null 2>&1
+          if curl -s http://localhost:8080/actuator/health | grep -q '"status":"UP"'
           then
             echo "API Gateway is READY"
             exit 0
@@ -263,39 +253,25 @@ stages:
           COUNT=$((COUNT+1))
         done
 
-        echo "API Gateway failed to start"
-        echo "Container status:"
-        docker ps
-
-        echo "API Gateway logs:"
-        docker logs $(docker ps -q --filter "ancestor=prashasthnaik/apigateway")
+        echo "API Gateway did not become healthy"
+        echo "Container logs:"
+        docker logs api-gateway || true
 
         exit 1
       displayName: Wait for API Gateway
 
-    # -------------------------------
-    # 3. Integration Tests
-    # -------------------------------
+    # 3️⃣ Integration Tests
     - script: |
-        echo "====================================="
-        echo "Running Integration Tests"
-        echo "====================================="
+        echo "Running Integration Tests..."
 
-        echo "Testing Product Service"
         curl -f http://localhost:8080/api/products
-
-        echo "Testing Order Service"
         curl -f http://localhost:8080/api/orders
-
-        echo "Testing User Service"
         curl -f http://localhost:8080/api/users
 
         echo "ALL INTEGRATION TESTS PASSED"
       displayName: Integration Tests
 
-    # -------------------------------
-    # 4. Cleanup
-    # -------------------------------
+    # 4️⃣ Cleanup
     - script: |
         echo "Stopping TEST services..."
         docker compose down
