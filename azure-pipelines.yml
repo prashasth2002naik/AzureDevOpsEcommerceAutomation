@@ -206,548 +206,64 @@ stages:
         done
         exit 1
       displayName: Smoke Test - User Service
-
 # =====================================================
-# STAGE 3 : TEST
+# STAGE 3 : TEST (INTEGRATION)
 # =====================================================
 - stage: TEST
-  displayName: CD - Test
+  displayName: CD - Test (Integration Tests)
   dependsOn: DEV
   condition: succeeded()
 
   jobs:
-  - job: DeployTest
-    displayName: Deploy to TEST
+  - job: IntegrationTests
+    displayName: Integration Tests
     pool:
       name: Default
       demands:
         - ENV -equals TEST
 
     steps:
-    - script: echo "Deploying to TEST environment"
-      displayName: TEST Deploy
-# trigger:
-# - main
 
-# stages:
+    - script: docker compose up -d
+      displayName: Start services (TEST)
 
-# # ============================
-# # STAGE 1 : CI (Build + Test + Docker Push)
-# # ============================
-# - stage: CI
-#   displayName: CI - Build, Test & Push Images
-#   jobs:
-#   - job: CIJob
-#     displayName: CI Job
-#     pool:
-#       name: Default
+    - script: |
+        for i in {1..12}
+        do
+          if curl -f http://localhost:8080 > /dev/null 2>&1
+          then
+            exit 0
+          fi
+          sleep 5
+        done
+        exit 1
+      displayName: Wait for API Gateway
 
-#     steps:
+    - script: |
+        curl -f http://localhost:8080/api/products
+        curl -f http://localhost:8080/api/orders
+        curl -f http://localhost:8080/api/users
+      displayName: Integration Tests
 
-#     - script: mvn test
-#       workingDirectory: api-gateway
-#       displayName: API Gateway - Test
-
-#     - task: Docker@2
-#       displayName: API Gateway - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/apigateway
-#         dockerfile: api-gateway/Dockerfile
-#         tags: $(Build.BuildId)
-
-#     - script: mvn test
-#       workingDirectory: eureka-server
-#       displayName: Eureka - Test
-
-#     - task: Docker@2
-#       displayName: Eureka - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/eureka
-#         dockerfile: eureka-server/Dockerfile
-#         tags: $(Build.BuildId)
-
-#     - script: |
-#         npm install
-#         npm test -- --watch=false
-#       workingDirectory: frontend
-#       displayName: Frontend - Test
-
-#     - task: Docker@2
-#       displayName: Frontend - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/frontend
-#         dockerfile: frontend/Dockerfile
-#         tags: $(Build.BuildId)
-
-#     - script: mvn test
-#       workingDirectory: order-service
-#       displayName: Order Service - Test
-
-#     - task: Docker@2
-#       displayName: Order Service - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/order
-#         dockerfile: order-service/Dockerfile
-#         tags: $(Build.BuildId)
-
-#     - script: mvn test
-#       workingDirectory: product-service
-#       displayName: Product Service - Test
-
-#     - task: Docker@2
-#       displayName: Product Service - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/product
-#         dockerfile: product-service/Dockerfile
-#         tags: $(Build.BuildId)
-
-#     - script: mvn test
-#       workingDirectory: user-service
-#       displayName: User Service - Test
-
-#     - task: Docker@2
-#       displayName: User Service - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/user
-#         dockerfile: user-service/Dockerfile
-#         tags: $(Build.BuildId)
-
+    - script: docker compose down
+      displayName: Cleanup TEST
+      condition: always()
 # # =====================================================
-# # STAGE 2 : DEV
-# # =====================================================
-# - stage: DEV
-#   displayName: CD - Dev
-#   dependsOn: CI
-#   condition: succeeded()
-
-#   jobs:
-#   - job: DeployDev
-#     displayName: Deploy to DEV
-#     pool:
-#       name: Default
-#       demands:
-#         - ENV -equals DEV
-
-#     steps:
-
-#     - script: docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
-#       displayName: API Gateway - Unit Tests (DEV)
-
-#     - script: docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
-#       displayName: Eureka - Unit Tests (DEV)
-
-#     - script: docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
-#       displayName: Order Service - Unit Tests (DEV)
-
-#     - script: docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
-#       displayName: Product Service - Unit Tests (DEV)
-
-#     - script: docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
-#       displayName: User Service - Unit Tests (DEV)
-
-#     # -------- FRONTEND UNIT TESTS (FINAL FIX) --------
-#     - script: |
-#         docker run --rm \
-#           -v $(pwd)/frontend:/app \
-#           -w /app \
-#           node:18 \
-#           sh -c "
-#             npm install &&
-#             npm run build &&
-#             npm install -g serve &&
-#             serve -s build -l 3000 &
-#             echo 'Waiting for frontend to be ready...' &&
-#             for i in 1 2 3 4 5 6 7 8 9 10; do
-#               curl -f http://localhost:3000 && exit 0
-#               sleep 3
-#             done
-#             exit 1
-#           "
-#       displayName: Frontend - Unit Tests (DEV)
-
-      
-#     # -------- SMOKE TESTS (UNCHANGED) --------
-#     - script: |
-#         echo "Smoke Test: API Gateway"
-#         for i in {1..10}; do
-#           nc -z localhost 8080 && echo "API Gateway is UP" && exit 0
-#           sleep 5
-#         done
-#         exit 1
-#       displayName: Smoke Test - API Gateway
-
-#     - script: |
-#         echo "Smoke Test: Frontend"
-#         curl -f http://localhost:3000
-#       displayName: Smoke Test - Frontend
-
-#     - script: |
-#         echo "Smoke Test: Order Service"
-#         for i in {1..10}; do
-#           nc -z localhost 8081 && echo "Order Service is UP" && exit 0
-#           sleep 5
-#         done
-#         exit 1
-#       displayName: Smoke Test - Order Service
-
-#     - script: |
-#         echo "Smoke Test: Product Service"
-#         for i in {1..10}; do
-#           nc -z localhost 8082 && echo "Product Service is UP" && exit 0
-#           sleep 5
-#         done
-#         exit 1
-#       displayName: Smoke Test - Product Service
-
-#     - script: |
-#         echo "Smoke Test: User Service"
-#         for i in {1..10}; do
-#           nc -z localhost 8083 && echo "User Service is UP" && exit 0
-#           sleep 5
-#         done
-#         exit 1
-#       displayName: Smoke Test - User Service
-
-# # =====================================================
-# # STAGE 3 : TEST (Integration Tests)
+# # STAGE 3 : TEST
 # # =====================================================
 # - stage: TEST
-#   displayName: CD - Test (Integration Tests)
+#   displayName: CD - Test
 #   dependsOn: DEV
 #   condition: succeeded()
 
 #   jobs:
-#   - job: IntegrationTests
-#     displayName: Integration Tests
+#   - job: DeployTest
+#     displayName: Deploy to TEST
 #     pool:
 #       name: Default
 #       demands:
 #         - ENV -equals TEST
 
 #     steps:
-
-#     # -------------------------------
-#     # 1. Start services for TEST
-#     # -------------------------------
-#     - script: |
-#         echo "Starting services for TEST environment"
-#         docker compose up -d
-#       displayName: Start services (TEST)
-
-#     # -------------------------------
-#     # 2. Wait for API Gateway
-#     # -------------------------------
-#     - script: |
-#         echo "Waiting for API Gateway on port 8080..."
-
-#         for i in {1..12}
-#         do
-#           if curl -f http://localhost:8080 > /dev/null 2>&1
-#           then
-#             echo "API Gateway is ready"
-#             exit 0
-#           fi
-
-#           echo "Retrying in 5 seconds..."
-#           sleep 5
-#         done
-
-#         echo "API Gateway not reachable"
-#         exit 1
-#       displayName: Wait for API Gateway
-
-#     # -------------------------------
-#     # 3. Integration Tests
-#     # -------------------------------
-#     - script: |
-#         echo "Integration Test: Product Service"
-#         curl -f http://localhost:8080/api/products
-
-#         echo "Integration Test: Order Service"
-#         curl -f http://localhost:8080/api/orders
-
-#         echo "Integration Test: User Service"
-#         curl -f http://localhost:8080/api/users
-
-#         echo "ALL INTEGRATION TESTS PASSED"
-#       displayName: Integration Tests - curl
-
-#     # -------------------------------
-#     # 4. Cleanup TEST environment
-#     # -------------------------------
-#     - script: |
-#         echo "Stopping TEST services"
-#         docker compose down
-#       displayName: Cleanup TEST environment
-#       condition: always()
-
-# trigger:
-# - main
-
-# stages:
-
-# # =====================================================
-# # STAGE 1 : CI (UNCHANGED)
-# # =====================================================
-# - stage: CI
-#   displayName: CI - Build, Test & Push Images
-#   jobs:
-#   - job: CIJob
-#     displayName: CI Job
-#     pool:
-#       name: Default
-
-#     steps:
-
-#     - script: mvn test
-#       workingDirectory: api-gateway
-#       displayName: API Gateway - Test
-
-#     - task: Docker@2
-#       displayName: API Gateway - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/apigateway
-#         dockerfile: api-gateway/Dockerfile
-#         tags: $(Build.BuildId)
-
-#     - script: mvn test
-#       workingDirectory: eureka-server
-#       displayName: Eureka - Test
-
-#     - task: Docker@2
-#       displayName: Eureka - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/eureka
-#         dockerfile: eureka-server/Dockerfile
-#         tags: $(Build.BuildId)
-
-#     - script: |
-#         npm install
-#         npm test -- --watch=false
-#       workingDirectory: frontend
-#       displayName: Frontend - Test
-
-#     - task: Docker@2
-#       displayName: Frontend - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/frontend
-#         dockerfile: frontend/Dockerfile
-#         tags: $(Build.BuildId)
-
-#     - script: mvn test
-#       workingDirectory: order-service
-#       displayName: Order Service - Test
-
-#     - task: Docker@2
-#       displayName: Order Service - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/order
-#         dockerfile: order-service/Dockerfile
-#         tags: $(Build.BuildId)
-
-#     - script: mvn test
-#       workingDirectory: product-service
-#       displayName: Product Service - Test
-
-#     - task: Docker@2
-#       displayName: Product Service - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/product
-#         dockerfile: product-service/Dockerfile
-#         tags: $(Build.BuildId)
-
-#     - script: mvn test
-#       workingDirectory: user-service
-#       displayName: User Service - Test
-
-#     - task: Docker@2
-#       displayName: User Service - Build & Push
-#       inputs:
-#         command: buildAndPush
-#         containerRegistry: dockerhub
-#         repository: prashasthnaik/user
-#         dockerfile: user-service/Dockerfile
-#         tags: $(Build.BuildId)
-
-# # =====================================================
-# # STAGE 2 : DEV (UNIT TESTS + SMOKE TESTS)
-# # =====================================================
-# - stage: DEV
-#   displayName: CD - Dev
-#   dependsOn: CI
-#   condition: succeeded()
-
-#   jobs:
-#   - job: DeployDev
-#     displayName: Deploy to DEV
-#     pool:
-#       name: Default
-#       demands:
-#         - ENV -equals DEV
-
-#     steps:
-
-#     # -------------------
-#     # UNIT TESTS (DEV)
-#     # -------------------
-#     - script: mvn test
-#       workingDirectory: api-gateway
-#       displayName: API Gateway - Unit Test (DEV)
-
-#     - script: mvn test
-#       workingDirectory: eureka-server
-#       displayName: Eureka - Unit Test (DEV)
-
-#     - script: mvn test
-#       workingDirectory: order-service
-#       displayName: Order Service - Unit Test (DEV)
-
-#     - script: mvn test
-#       workingDirectory: product-service
-#       displayName: Product Service - Unit Test (DEV)
-
-#     - script: mvn test
-#       workingDirectory: user-service
-#       displayName: User Service - Unit Test (DEV)
-
-#     - script: |
-#         npm install
-#         npm test -- --watch=false
-#       workingDirectory: frontend
-#       displayName: Frontend - Unit Test (DEV)
-
-#     # -------------------
-#     # START SERVICES
-#     # -------------------
-#     - script: |
-#         echo "Starting DEV services..."
-#         docker compose up -d
-#       displayName: Start services (DEV)
-
-#     # -------------------
-#     # SMOKE TESTS
-#     # -------------------
-#     - script: |
-#         echo "Smoke Test: API Gateway"
-#         for i in {1..12}
-#         do
-#           if curl -f http://localhost:8080 > /dev/null 2>&1
-#           then
-#             echo "API Gateway is UP"
-#             exit 0
-#           fi
-#           sleep 5
-#         done
-#         exit 1
-#       displayName: Smoke Test - API Gateway
-
-#     - script: |
-#         echo "Smoke Test: Order Service"
-#         for i in {1..12}
-#         do
-#           if curl -f http://localhost:8081 > /dev/null 2>&1
-#           then
-#             echo "Order Service is UP"
-#             exit 0
-#           fi
-#           sleep 5
-#         done
-#         exit 1
-#       displayName: Smoke Test - Order Service
-
-#     - script: |
-#         echo "Smoke Test: Product Service"
-#         for i in {1..12}
-#         do
-#           if curl -f http://localhost:8082 > /dev/null 2>&1
-#           then
-#             echo "Product Service is UP"
-#             exit 0
-#           fi
-#           sleep 5
-#         done
-#         exit 1
-#       displayName: Smoke Test - Product Service
-
-#     - script: |
-#         echo "Smoke Test: User Service"
-#         for i in {1..12}
-#         do
-#           if curl -f http://localhost:8083 > /dev/null 2>&1
-#           then
-#             echo "User Service is UP"
-#             exit 0
-#           fi
-#           sleep 5
-#         done
-#         exit 1
-#       displayName: Smoke Test - User Service
-
-#     - script: docker compose down
-#       displayName: Cleanup DEV
-#       condition: always()
-
-# # =====================================================
-# # STAGE 3 : TEST (INTEGRATION)
-# # =====================================================
-# - stage: TEST
-#   displayName: CD - Test (Integration Tests)
-#   dependsOn: DEV
-#   condition: succeeded()
-
-#   jobs:
-#   - job: IntegrationTests
-#     displayName: Integration Tests
-#     pool:
-#       name: Default
-#       demands:
-#         - ENV -equals TEST
-
-#     steps:
-
-#     - script: docker compose up -d
-#       displayName: Start services (TEST)
-
-#     - script: |
-#         for i in {1..12}
-#         do
-#           if curl -f http://localhost:8080 > /dev/null 2>&1
-#           then
-#             exit 0
-#           fi
-#           sleep 5
-#         done
-#         exit 1
-#       displayName: Wait for API Gateway
-
-#     - script: |
-#         curl -f http://localhost:8080/api/products
-#         curl -f http://localhost:8080/api/orders
-#         curl -f http://localhost:8080/api/users
-#       displayName: Integration Tests
-
-#     - script: docker compose down
-#       displayName: Cleanup TEST
-#       condition: always()
+#     - script: echo "Deploying to TEST environment"
+#       displayName: TEST Deploy
