@@ -299,6 +299,55 @@ stages:
         docker compose down
       displayName: Cleanup TEST environment
       condition: always()
+# =====================================================
+# STAGE 4 : PROD (Kubernetes Deployment)
+# =====================================================
+- stage: PROD
+  displayName: CD - Production (Kubernetes Deploy)
+  dependsOn: TEST
+  condition: succeeded()
+
+  jobs:
+  - job: DeployProd
+    displayName: Deploy to Kubernetes PROD
+    pool:
+      name: Default
+      demands:
+        - ENV -equals PROD
+
+    steps:
+
+    - script: |
+        echo "Checking Kubernetes cluster..."
+        kubectl get nodes
+      displayName: Verify Cluster
+
+    - script: |
+        echo "Creating namespace"
+        kubectl apply -f k8s/namespace.yaml
+      displayName: Create Namespace
+
+    - script: |
+        echo "Deploy API Gateway"
+        kubectl apply -f k8s/api-gateway-deployment.yaml
+        kubectl apply -f k8s/api-gateway-service.yaml
+      displayName: Deploy API Gateway
+
+    - script: |
+        echo "Deploy Frontend"
+        kubectl apply -f k8s/frontend-deployment.yaml
+        kubectl apply -f k8s/frontend-service.yaml
+      displayName: Deploy Frontend
+
+    - script: |
+        echo "Checking pods"
+        kubectl get pods -n ecommerce-prod
+      displayName: Verify Pods
+
+    - script: |
+        echo "Checking services"
+        kubectl get svc -n ecommerce-prod
+      displayName: Verify Services
 # # =====================================================
 # # STAGE 3 : TEST (Integration Tests)
 # # =====================================================
