@@ -325,53 +325,57 @@ stages:
 
     # -------- Create Namespace --------
     - script: |
+        echo "Creating namespace..."
         kubectl apply -f k8s/namespace.yaml
       displayName: Create Namespace
 
     # =====================================================
-    # 🔧 STEP 1 — Replace image tags
+    # 🔧 STEP 2 — Inject Build ID into YAML
     # =====================================================
     - script: |
-        echo "Injecting Build ID into images..."
+        echo "Injecting Build ID into deployment files..."
 
-        sed -i 's|:latest|:$(Build.BuildId)|g' k8s/*.yaml
+        sed -i "s/__TAG__/$(Build.BuildId)/g" k8s/*.yaml
 
-        echo "Images after update:"
+        echo "Updated image tags:"
         grep "image:" -R k8s/
-      displayName: Update Image Tags
+      displayName: Inject Image Tag
 
     # =====================================================
-    # 🚀 STEP 2 — Deploy EVERYTHING at once
+    # 🔧 STEP 3 — Clean old pods (IMPORTANT)
     # =====================================================
     - script: |
-        echo "Deploying all resources..."
-        kubectl apply -f k8s/
-      displayName: Deploy All
+        echo "Deleting old pods..."
+        kubectl delete pods --all -n ecommerce-prod
+      displayName: Clean Old Pods
 
-    # -------- Wait --------
+    # =====================================================
+    # 🚀 Deploy ALL services
+    # =====================================================
+    - script: |
+        echo "Deploying all Kubernetes resources..."
+        kubectl apply -f k8s/
+      displayName: Deploy All Services
+
+    # -------- Wait for startup --------
     - script: |
         echo "Waiting for services to stabilize..."
         sleep 40
-      displayName: Wait
+      displayName: Wait for Pods
 
-    # =====================================================
-    # 🔁 STEP 3 — Restart deployments
-    # =====================================================
+    # -------- Verify Pods --------
     - script: |
-        echo "Restarting deployments..."
-        kubectl rollout restart deployment -n ecommerce-prod
-      displayName: Restart Deployments
-
-    # -------- Verify --------
-    - script: |
+        echo "Checking pods..."
         kubectl get pods -n ecommerce-prod
       displayName: Verify Pods
 
+    # -------- Verify Services --------
     - script: |
+        echo "Checking services..."
         kubectl get svc -n ecommerce-prod
       displayName: Verify Services
 
-    # -------- Debug (VERY IMPORTANT) --------
+    # -------- Debug Logs (VERY IMPORTANT) --------
     - script: |
         echo "Checking API Gateway logs..."
         kubectl logs deployment/api-gateway -n ecommerce-prod --tail=50
