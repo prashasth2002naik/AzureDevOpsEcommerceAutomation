@@ -16,5 +16,6 @@ spec:
       containers:
       - name: order-service
         image: prashasthnaik/order:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8081
