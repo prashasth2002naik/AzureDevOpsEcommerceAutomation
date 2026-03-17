@@ -16,7 +16,7 @@ spec:
       containers:
       - name: api-gateway
         #image: prashasthnaik/apigateway:latest
-        image: prashasthnaik/apigateway:$(Build.BuildId)
+        image: prashasthnaik/apigateway:__TAG__
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
