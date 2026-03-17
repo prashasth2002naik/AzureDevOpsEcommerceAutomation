@@ -326,6 +326,17 @@ stages:
         echo "Creating namespace"
         kubectl apply -f k8s/namespace.yaml
       displayName: Create Namespace
+    # -------- Eureka --------
+    - script: |
+        echo "Deploy Eureka Server"
+        kubectl apply -f k8s/eureka-deployment.yaml
+        kubectl apply -f k8s/eureka-service.yaml
+      displayName: Deploy Eureka Server
+
+    - script: |
+        echo "Waiting for Eureka to start..."
+        sleep 30
+      displayName: Wait for Eureka
 
     # -------- API Gateway --------
     - script: |
@@ -371,17 +382,7 @@ stages:
         echo "Checking services"
         kubectl get svc -n ecommerce-prod
       displayName: Verify Services
-    # -------- Eureka --------
-    - script: |
-        echo "Deploy Eureka Server"
-        kubectl apply -f k8s/eureka-deployment.yaml
-        kubectl apply -f k8s/eureka-service.yaml
-      displayName: Deploy Eureka Server
-
-    - script: |
-        echo "Waiting for Eureka to start..."
-        sleep 30
-      displayName: Wait for Eureka
+    
 # # =====================================================
 # # STAGE 4 : PROD (Kubernetes Deployment)
 # # =====================================================
