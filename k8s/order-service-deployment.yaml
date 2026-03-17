@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
       - name: order-service
-        image: prashasthnaik/order:latest
+        #image: prashasthnaik/order:latest
+        image: prashasthnaik/order:$(Build.BuildId)
         imagePullPolicy: Always
         ports:
         - containerPort: 8081
