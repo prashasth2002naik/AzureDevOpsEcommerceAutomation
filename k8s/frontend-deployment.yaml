@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: prashasthnaik/frontend:latest
+        #image: prashasthnaik/frontend:latest
+        image: prashasthnaik/frontend:$(Build.BuildId)
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
