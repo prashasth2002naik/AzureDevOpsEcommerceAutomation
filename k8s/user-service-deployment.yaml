@@ -16,5 +16,6 @@ spec:
       containers:
       - name: user-service
         image: prashasthnaik/user:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8083
