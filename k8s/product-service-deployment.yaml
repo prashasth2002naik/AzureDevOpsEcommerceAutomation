@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
       - name: product-service
-        image: prashasthnaik/product:latest
+        #image: prashasthnaik/product:latest
+        image: prashasthnaik/product:$(Build.BuildId)
         imagePullPolicy: Always
         ports:
         - containerPort: 8082
