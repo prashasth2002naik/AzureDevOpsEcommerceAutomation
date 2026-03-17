@@ -7,10 +7,32 @@ spring:
 
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
+
+      routes:
+
+        # -------- PRODUCT --------
+        - id: product-service
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - RewritePath=/api/products/?(?<segment>.*), /products/${segment}
+
+        # -------- ORDER --------
+        - id: order-service
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - RewritePath=/api/orders/?(?<segment>.*), /orders/${segment}
+
+        # -------- USER --------
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - RewritePath=/api/users/?(?<segment>.*), /users/${segment}
 
       globalcors:
         corsConfigurations:
