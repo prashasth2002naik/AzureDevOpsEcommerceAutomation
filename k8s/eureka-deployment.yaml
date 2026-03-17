@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
       - name: eureka-server
-        image: prashasthnaik/eureka:latest
+        #image: prashasthnaik/eureka:latest
+        image: prashasthnaik/eureka:$(Build.BuildId)
         imagePullPolicy: Always
         ports:
         - containerPort: 8761
