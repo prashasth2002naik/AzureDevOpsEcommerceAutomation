@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
       - name: user-service
-        image: prashasthnaik/user:latest
+        #image: prashasthnaik/user:latest
+        image: prashasthnaik/user:$(Build.BuildId)
         imagePullPolicy: Always
         ports:
         - containerPort: 8083
