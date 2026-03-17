@@ -16,5 +16,6 @@ spec:
       containers:
       - name: eureka-server
         image: prashasthnaik/eureka:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8761
