@@ -317,71 +317,148 @@ stages:
 
     steps:
 
+    # -------- Verify Cluster --------
     - script: |
         echo "Checking Kubernetes cluster..."
         kubectl get nodes
       displayName: Verify Cluster
 
+    # -------- Create Namespace --------
     - script: |
-        echo "Creating namespace"
         kubectl apply -f k8s/namespace.yaml
       displayName: Create Namespace
-    # -------- Eureka --------
-    - script: |
-        echo "Deploy Eureka Server"
-        kubectl apply -f k8s/eureka-deployment.yaml
-        kubectl apply -f k8s/eureka-service.yaml
-      displayName: Deploy Eureka Server
 
+    # =====================================================
+    # 🔧 STEP 1 — Replace image tags
+    # =====================================================
     - script: |
-        echo "Waiting for Eureka to start..."
-        sleep 30
-      displayName: Wait for Eureka
+        echo "Injecting Build ID into images..."
 
-    # -------- API Gateway --------
-    - script: |
-        echo "Deploy API Gateway"
-        kubectl apply -f k8s/api-gateway-deployment.yaml
-        kubectl apply -f k8s/api-gateway-service.yaml
-      displayName: Deploy API Gateway
+        sed -i 's|:latest|:$(Build.BuildId)|g' k8s/*.yaml
 
-    # -------- Frontend --------
-    - script: |
-        echo "Deploy Frontend"
-        kubectl apply -f k8s/frontend-deployment.yaml
-        kubectl apply -f k8s/frontend-service.yaml
-      displayName: Deploy Frontend
+        echo "Images after update:"
+        grep "image:" -R k8s/
+      displayName: Update Image Tags
 
-    # -------- Product Service --------
+    # =====================================================
+    # 🚀 STEP 2 — Deploy EVERYTHING at once
+    # =====================================================
     - script: |
-        echo "Deploy Product Service"
-        kubectl apply -f k8s/product-service-deployment.yaml
-        kubectl apply -f k8s/product-service-service.yaml
-      displayName: Deploy Product Service
+        echo "Deploying all resources..."
+        kubectl apply -f k8s/
+      displayName: Deploy All
 
-    # -------- Order Service --------
+    # -------- Wait --------
     - script: |
-        echo "Deploy Order Service"
-        kubectl apply -f k8s/order-service-deployment.yaml
-        kubectl apply -f k8s/order-service-service.yaml
-      displayName: Deploy Order Service
+        echo "Waiting for services to stabilize..."
+        sleep 40
+      displayName: Wait
 
-    # -------- User Service --------
+    # =====================================================
+    # 🔁 STEP 3 — Restart deployments
+    # =====================================================
     - script: |
-        echo "Deploy User Service"
-        kubectl apply -f k8s/user-service-deployment.yaml
-        kubectl apply -f k8s/user-service-service.yaml
-      displayName: Deploy User Service
+        echo "Restarting deployments..."
+        kubectl rollout restart deployment -n ecommerce-prod
+      displayName: Restart Deployments
 
+    # -------- Verify --------
     - script: |
-        echo "Checking pods"
         kubectl get pods -n ecommerce-prod
       displayName: Verify Pods
 
     - script: |
-        echo "Checking services"
         kubectl get svc -n ecommerce-prod
       displayName: Verify Services
+
+    # -------- Debug (VERY IMPORTANT) --------
+    - script: |
+        echo "Checking API Gateway logs..."
+        kubectl logs deployment/api-gateway -n ecommerce-prod --tail=50
+      displayName: Debug Logs
+# # =====================================================
+# # STAGE 4 : PROD (Kubernetes Deployment)
+# # =====================================================
+# - stage: PROD
+#   displayName: CD - Production (Kubernetes Deploy)
+#   dependsOn: TEST
+#   condition: succeeded()
+
+#   jobs:
+#   - job: DeployProd
+#     displayName: Deploy to Kubernetes PROD
+#     pool:
+#       name: Default
+#       demands:
+#         - ENV -equals PROD
+
+#     steps:
+
+#     - script: |
+#         echo "Checking Kubernetes cluster..."
+#         kubectl get nodes
+#       displayName: Verify Cluster
+
+#     - script: |
+#         echo "Creating namespace"
+#         kubectl apply -f k8s/namespace.yaml
+#       displayName: Create Namespace
+#     # -------- Eureka --------
+#     - script: |
+#         echo "Deploy Eureka Server"
+#         kubectl apply -f k8s/eureka-deployment.yaml
+#         kubectl apply -f k8s/eureka-service.yaml
+#       displayName: Deploy Eureka Server
+
+#     - script: |
+#         echo "Waiting for Eureka to start..."
+#         sleep 30
+#       displayName: Wait for Eureka
+
+#     # -------- API Gateway --------
+#     - script: |
+#         echo "Deploy API Gateway"
+#         kubectl apply -f k8s/api-gateway-deployment.yaml
+#         kubectl apply -f k8s/api-gateway-service.yaml
+#       displayName: Deploy API Gateway
+
+#     # -------- Frontend --------
+#     - script: |
+#         echo "Deploy Frontend"
+#         kubectl apply -f k8s/frontend-deployment.yaml
+#         kubectl apply -f k8s/frontend-service.yaml
+#       displayName: Deploy Frontend
+
+#     # -------- Product Service --------
+#     - script: |
+#         echo "Deploy Product Service"
+#         kubectl apply -f k8s/product-service-deployment.yaml
+#         kubectl apply -f k8s/product-service-service.yaml
+#       displayName: Deploy Product Service
+
+#     # -------- Order Service --------
+#     - script: |
+#         echo "Deploy Order Service"
+#         kubectl apply -f k8s/order-service-deployment.yaml
+#         kubectl apply -f k8s/order-service-service.yaml
+#       displayName: Deploy Order Service
+
+#     # -------- User Service --------
+#     - script: |
+#         echo "Deploy User Service"
+#         kubectl apply -f k8s/user-service-deployment.yaml
+#         kubectl apply -f k8s/user-service-service.yaml
+#       displayName: Deploy User Service
+
+#     - script: |
+#         echo "Checking pods"
+#         kubectl get pods -n ecommerce-prod
+#       displayName: Verify Pods
+
+#     - script: |
+#         echo "Checking services"
+#         kubectl get svc -n ecommerce-prod
+#       displayName: Verify Services
     
 # # =====================================================
 # # STAGE 4 : PROD (Kubernetes Deployment)
