@@ -7,13 +7,18 @@ spring:
 
   cloud:
     gateway:
+
+      # 🔍 Enables automatic service discovery (optional but good)
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
 
       routes:
-        # -------- PRODUCT SERVICE --------
+
+        # ===============================
+        # PRODUCT SERVICE
+        # ===============================
         - id: product-service
           uri: lb://product-service
           predicates:
@@ -21,7 +26,9 @@ spring:
           filters:
             - RewritePath=/api/products/(?<segment>.*), /products/${segment}
 
-        # -------- ORDER SERVICE --------
+        # ===============================
+        # ORDER SERVICE
+        # ===============================
         - id: order-service
           uri: lb://order-service
           predicates:
@@ -29,7 +36,9 @@ spring:
           filters:
             - RewritePath=/api/orders/(?<segment>.*), /orders/${segment}
 
-        # -------- USER SERVICE --------
+        # ===============================
+        # USER SERVICE
+        # ===============================
         - id: user-service
           uri: lb://user-service
           predicates:
@@ -37,6 +46,7 @@ spring:
           filters:
             - RewritePath=/api/users/(?<segment>.*), /users/${segment}
 
+      # 🌐 CORS (for frontend calls)
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -44,10 +54,18 @@ spring:
             allowedMethods: "*"
             allowedHeaders: "*"
 
+# ===============================
+# EUREKA CONFIG
+# ===============================
 eureka:
   client:
     service-url:
       defaultZone: http://eureka-server:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+
+  instance:
+    prefer-ip-address: true
 # server:
 #   port: 8080
 
