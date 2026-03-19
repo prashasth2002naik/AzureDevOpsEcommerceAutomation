@@ -4,36 +4,25 @@ server:
 spring:
   application:
     name: api-gateway
-
   cloud:
     gateway:
-
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
       routes:
-
-        # -------- PRODUCT --------
         - id: product-service
           uri: lb://PRODUCT-SERVICE
           predicates:
             - Path=/api/products/**
-          filters:
-            - RewritePath=/api/products/?(?<segment>.*), /products/${segment}
-
-        # -------- ORDER --------
         - id: order-service
           uri: lb://ORDER-SERVICE
           predicates:
             - Path=/api/orders/**
-          filters:
-            - RewritePath=/api/orders/?(?<segment>.*), /orders/${segment}
-
-        # -------- USER --------
         - id: user-service
           uri: lb://USER-SERVICE
           predicates:
             - Path=/api/users/**
-          filters:
-            - RewritePath=/api/users/?(?<segment>.*), /users/${segment}
-
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -45,43 +34,3 @@ eureka:
   client:
     service-url:
       defaultZone: http://eureka-server:8761/eureka/
-
-  instance:
-    prefer-ip-address: true
-# server:
-#   port: 8080
-
-# spring:
-#   application:
-#     name: api-gateway
-#   cloud:
-#     gateway:
-#       discovery:
-#         locator:
-#           enabled: true
-#           lower-case-service-id: true
-#       routes:
-#         - id: product-service
-#           uri: lb://product-service
-#           predicates:
-#             - Path=/api/products/**
-#         - id: order-service
-#           uri: lb://order-service
-#           predicates:
-#             - Path=/api/orders/**
-#         - id: user-service
-#           uri: lb://user-service
-#           predicates:
-#             - Path=/api/users/**
-#       globalcors:
-#         corsConfigurations:
-#           '[/**]':
-#             allowedOrigins: "*"
-#             allowedMethods: "*"
-#             allowedHeaders: "*"
-
-# eureka:
-#   client:
-#     service-url:
-#       #defaultZone: http://localhost:8761/eureka/
-#       defaultZone: http://eureka-server:8761/eureka/
