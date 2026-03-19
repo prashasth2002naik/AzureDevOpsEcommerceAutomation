@@ -17,7 +17,7 @@ ecommerce-microservices/
 - Node.js 14+ and npm
 - IDE (IntelliJ IDEA or Eclipse recommended)
 
-## Setup Instructions
+## Setup Instructions (BAREMETAL)
 
 ### 1. Start Services (IN ORDER)
 
