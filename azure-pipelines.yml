@@ -225,7 +225,7 @@ stages:
     steps:
 
     # ---------------------------------
-    # 1️⃣ Start Services
+    # Start Services
     # ---------------------------------
     - script: |
         echo "Starting TEST environment services..."
@@ -234,7 +234,7 @@ stages:
       displayName: Start services (TEST)
 
     # ---------------------------------
-    # 2️⃣ Wait for API Gateway Port
+    # Wait for API Gateway Port
     # ---------------------------------
     - script: |
         echo "Waiting for API Gateway to open port 8080..."
@@ -264,7 +264,7 @@ stages:
       displayName: Wait for API Gateway
 
     # ---------------------------------
-    # 3️⃣ Integration Tests (UNCHANGED)
+    # Integration Tests (UNCHANGED)
     # ---------------------------------
     - script: |
         echo "Running Integration Tests..."
@@ -277,7 +277,7 @@ stages:
       displayName: Integration Tests
 
     # ---------------------------------
-    # 4️⃣ Load Test (k6) - FIXED PATH
+    # Load Test (k6) - FIXED PATH
     # ---------------------------------
     - script: |
         echo "Running k6 Load Test..."
@@ -292,7 +292,7 @@ stages:
       displayName: Load Test (k6)
 
     # ---------------------------------
-    # 5️⃣ Cleanup
+    # Cleanup
     # ---------------------------------
     - script: |
         echo "Stopping TEST services..."
@@ -330,7 +330,7 @@ stages:
       displayName: Create Namespace
 
     # =====================================================
-    # 🔧 STEP 2 — Inject Build ID into YAML
+    # STEP 2 — Inject Build ID into YAML
     # =====================================================
     - script: |
         echo "Injecting Build ID into deployment files..."
@@ -342,7 +342,7 @@ stages:
       displayName: Inject Image Tag
 
     # =====================================================
-    # 🔧 STEP 3 — Clean old pods (IMPORTANT)
+    # STEP 3 — Clean old pods (IMPORTANT)
     # =====================================================
     - script: |
         echo "Deleting old pods..."
@@ -350,7 +350,7 @@ stages:
       displayName: Clean Old Pods
 
     # =====================================================
-    # 🚀 Deploy ALL services
+    # Deploy ALL services
     # =====================================================
     - script: |
         echo "Deploying all Kubernetes resources..."
