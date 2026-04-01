@@ -11,9 +11,10 @@ pipeline {
         // =========================
         // CI STAGE
         // =========================
-        stage('CI - Build & Test') {
+        stage('CI - Build & Push Images') {
             steps {
                 script {
+
                     def services = [
                         "api-gateway:apigateway",
                         "eureka-server:eureka",
@@ -22,7 +23,12 @@ pipeline {
                         "user-service:user"
                     ]
 
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub',
+                        usernameVariable: 'USER',
+                        passwordVariable: 'PASS'
+                    )]) {
+
                         sh 'echo $PASS | docker login -u $USER --password-stdin'
 
                         for (svc in services) {
@@ -37,7 +43,7 @@ pipeline {
                             }
                         }
 
-                        // Frontend separately
+                        // Frontend
                         dir('frontend') {
                             sh 'npm install'
                             sh 'npm run test --if-present || true'
@@ -55,7 +61,7 @@ pipeline {
         stage('DEV - Deploy & Smoke Test') {
             steps {
 
-                // Unit tests inside Docker
+                // Run unit tests inside docker
                 sh '''
                 docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
                 docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
@@ -64,46 +70,24 @@ pipeline {
                 docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
                 '''
 
+                // Deploy locally
                 sh 'docker compose config'
                 sh 'docker compose pull'
                 sh 'docker compose up -d --remove-orphans'
 
                 sh 'sleep 40'
 
-                // Smoke Tests
+                // Smoke test - API Gateway
                 sh '''
                 for i in {1..10}; do
-                  nc -z localhost 8080 && echo "API Gateway UP" && exit 0
-                  sleep 5
+                    nc -z localhost 8080 && exit 0
+                    sleep 5
                 done
                 exit 1
                 '''
 
+                // Frontend check
                 sh 'curl -f http://localhost:3000'
-
-                sh '''
-                for i in {1..10}; do
-                  nc -z localhost 8081 && exit 0
-                  sleep 5
-                done
-                exit 1
-                '''
-
-                sh '''
-                for i in {1..10}; do
-                  nc -z localhost 8082 && exit 0
-                  sleep 5
-                done
-                exit 1
-                '''
-
-                sh '''
-                for i in {1..10}; do
-                  nc -z localhost 8083 && exit 0
-                  sleep 5
-                done
-                exit 1
-                '''
             }
         }
 
@@ -114,7 +98,6 @@ pipeline {
             steps {
 
                 sh 'docker compose up -d'
-                sh 'docker ps'
 
                 // Wait for API Gateway
                 sh '''
@@ -123,12 +106,11 @@ pipeline {
 
                 while [ $COUNT -le $MAX_RETRIES ]
                 do
-                  if nc -z localhost 8080; then
-                    echo "API Gateway UP"
-                    exit 0
-                  fi
-                  sleep 5
-                  COUNT=$((COUNT+1))
+                    if nc -z localhost 8080; then
+                        exit 0
+                    fi
+                    sleep 5
+                    COUNT=$((COUNT+1))
                 done
 
                 docker logs api-gateway || true
@@ -142,7 +124,7 @@ pipeline {
                 curl -f http://localhost:8080/api/users
                 '''
 
-                // Load test
+                // Load test (k6)
                 sh '''
                 docker run --rm \
                 -v $(pwd)/loadtest.js:/scripts/loadtest.js \
@@ -150,7 +132,6 @@ pipeline {
                 grafana/k6 run /scripts/loadtest.js
                 '''
 
-                // Cleanup
                 sh 'docker compose down'
             }
         }
@@ -160,16 +141,22 @@ pipeline {
         // =========================
         stage('PROD - Kubernetes Deploy') {
             steps {
-                withCredentials([file(credentialsId: 'k8s-kubeconfig', variable: 'KUBECONFIG')]) {
+                withCredentials([file(
+                    credentialsId: 'k8s-kubeconfig',
+                    variable: 'KUBECONFIG'
+                )]) {
+
                     sh '''
                     export KUBECONFIG=$KUBECONFIG
 
                     kubectl get nodes
+
                     kubectl apply -f k8s/namespace.yaml
 
                     sed -i "s/__TAG__/${BUILD_NUMBER}/g" k8s/*.yaml
 
                     kubectl delete pods --all -n ecommerce-prod || true
+
                     kubectl apply -f k8s/
 
                     sleep 40
@@ -183,106 +170,13 @@ pipeline {
             }
         }
     }
-}pipeline {
-    agent any
 
-    environment {
-        DOCKER_USER = "prashasthnaik"
-        IMAGE_TAG = "${BUILD_NUMBER}"
-    }
-
-    stages {
-
-        // =========================
-        // CI STAGE
-        // =========================
-        stage('CI - Build & Test') {
-            parallel {
-
-                stage('API Gateway') {
-                    steps {
-                        dir('api-gateway') {
-                            sh 'mvn test'
-                            sh "docker build -t $DOCKER_USER/apigateway:$IMAGE_TAG ."
-                            sh "docker push $DOCKER_USER/apigateway:$IMAGE_TAG"
-                        }
-                    }
-                }
-
-                stage('Eureka') {
-                    steps {
-                        dir('eureka-server') {
-                            sh 'mvn test'
-                            sh "docker build -t $DOCKER_USER/eureka:$IMAGE_TAG ."
-                            sh "docker push $DOCKER_USER/eureka:$IMAGE_TAG"
-                        }
-                    }
-                }
-
-                stage('Frontend') {
-                    steps {
-                        dir('frontend') {
-                            sh 'npm install'
-                            sh 'npm test -- --watch=false'
-                            sh "docker build -t $DOCKER_USER/frontend:$IMAGE_TAG ."
-                            sh "docker push $DOCKER_USER/frontend:$IMAGE_TAG"
-                        }
-                    }
-                }
-            }
-        }
-
-        // =========================
-        // DEV STAGE
-        // =========================
-        stage('DEV - Deploy & Smoke Test') {
-            steps {
-                sh 'docker compose up -d --remove-orphans'
-                sh 'sleep 40'
-
-                sh 'nc -z localhost 8080'
-                sh 'curl -f http://localhost:3000'
-            }
-        }
-
-        // =========================
-        // TEST STAGE
-        // =========================
-        stage('TEST - Integration & Load') {
-            steps {
-                sh 'curl -f http://localhost:8080/api/products'
-                sh 'curl -f http://localhost:8080/api/orders'
-                sh 'curl -f http://localhost:8080/api/users'
-
-                sh '''
-                docker run --rm \
-                -v $(pwd)/loadtest.js:/scripts/loadtest.js \
-                --network host \
-                grafana/k6 run /scripts/loadtest.js
-                '''
-            }
-        }
-
-        // =========================
-        // PROD STAGE
-        // =========================
-        stage('PROD - Kubernetes Deploy') {
-            steps {
-                withCredentials([file(credentialsId: 'k8s-kubeconfig', variable: 'KUBECONFIG')]) {
-                    sh '''
-                    export KUBECONFIG=$KUBECONFIG
-
-                    kubectl apply -f k8s/namespace.yaml
-
-                    sed -i "s/__TAG__/${BUILD_NUMBER}/g" k8s/*.yaml
-
-                    kubectl delete pods --all -n ecommerce-prod || true
-                    kubectl apply -f k8s/
-
-                    kubectl get pods -n ecommerce-prod
-                    '''
-                }
-            }
+    // =========================
+    // CLEANUP (ALWAYS RUNS)
+    // =========================
+    post {
+        always {
+            sh 'docker system prune -f || true'
         }
     }
 }
