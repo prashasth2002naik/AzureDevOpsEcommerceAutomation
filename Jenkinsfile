@@ -171,13 +171,13 @@ pipeline {
     //     }
     // }
 
-    // // =========================
-    // // CLEANUP (ALWAYS RUNS)
-    // // =========================
-    // post {
-    //     always {
-    //         sh 'docker system prune -f || true'
-    //     }
+    // =========================
+    // CLEANUP (ALWAYS RUNS)
+    // =========================
+    post {
+        always {
+            sh 'docker system prune -f || true'
+        }
      }
 }
     
