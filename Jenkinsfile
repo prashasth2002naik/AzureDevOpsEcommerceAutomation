@@ -61,15 +61,105 @@ pipeline {
         // =========================
         stage('DEV - Deploy & Smoke Test') {
             steps {
-                sh 'docker compose down --remove-orphans || true'
-                sh 'docker compose up -d --remove-orphans'
-                sh 'sleep 40'
-
-                sh 'nc -z localhost 8085'
-                sh 'curl -f http://localhost:3000'
+        
+                script {
+        
+                    // =========================
+                    // CLEAN OLD CONTAINERS (IMPORTANT)
+                    // =========================
+                    sh '''
+                    docker compose down --remove-orphans || true
+                    docker rm -f $(docker ps -aq) || true
+                    '''
+        
+                    // =========================
+                    // BACKEND UNIT TESTS (IN DOCKER)
+                    // =========================
+                    sh '''
+                    docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    '''
+        
+                    // =========================
+                    // VALIDATE + PULL
+                    // =========================
+                    sh 'docker compose config'
+                    sh 'docker compose pull || true'
+        
+                    // =========================
+                    // DEPLOY
+                    // =========================
+                    sh 'docker compose up -d --remove-orphans'
+        
+                    // =========================
+                    // WAIT
+                    // =========================
+                    sh '''
+                    echo "Waiting for services to start..."
+                    sleep 40
+                    '''
+        
+                    // =========================
+                    // SMOKE TEST - API GATEWAY (UPDATED PORT)
+                    // =========================
+                    sh '''
+                    echo "Smoke Test: API Gateway"
+                    for i in {1..10}; do
+                      nc -z localhost 8085 && echo "API Gateway is UP" && exit 0
+                      sleep 5
+                    done
+                    exit 1
+                    '''
+        
+                    // =========================
+                    // FRONTEND
+                    // =========================
+                    sh '''
+                    echo "Smoke Test: Frontend"
+                    curl -f http://localhost:3000
+                    '''
+        
+                    // =========================
+                    // ORDER SERVICE
+                    // =========================
+                    sh '''
+                    echo "Smoke Test: Order Service"
+                    for i in {1..10}; do
+                      nc -z localhost 8081 && echo "Order Service is UP" && exit 0
+                      sleep 5
+                    done
+                    exit 1
+                    '''
+        
+                    // =========================
+                    // PRODUCT SERVICE
+                    // =========================
+                    sh '''
+                    echo "Smoke Test: Product Service"
+                    for i in {1..10}; do
+                      nc -z localhost 8082 && echo "Product Service is UP" && exit 0
+                      sleep 5
+                    done
+                    exit 1
+                    '''
+        
+                    // =========================
+                    // USER SERVICE
+                    // =========================
+                    sh '''
+                    echo "Smoke Test: User Service"
+                    for i in {1..10}; do
+                      nc -z localhost 8083 && echo "User Service is UP" && exit 0
+                      sleep 5
+                    done
+                    exit 1
+                    '''
+                }
             }
         }
-
         /*
         // =========================
         // TEST STAGE
