@@ -65,7 +65,7 @@ pipeline {
                 sh 'docker compose up -d --remove-orphans'
                 sh 'sleep 40'
 
-                sh 'nc -z localhost 8080'
+                sh 'nc -z localhost 8085'
                 sh 'curl -f http://localhost:3000'
             }
         }
