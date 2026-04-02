@@ -37,7 +37,7 @@ pipeline {
                             def imageName = parts[1]
 
                             dir(dirName) {
-                                sh 'mvn test'
+                                sh 'mvn clean test'
                                 sh "docker build -t $DOCKER_USER/${imageName}:$IMAGE_TAG ."
                                 sh "docker push $DOCKER_USER/${imageName}:$IMAGE_TAG"
                             }
