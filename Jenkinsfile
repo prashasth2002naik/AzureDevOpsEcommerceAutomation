@@ -129,23 +129,21 @@ pipeline {
                     // WAIT
                     // =========================
                     sh '''
-                    echo "Waiting for services to be READY..."
+                    echo "Waiting for services to register in Eureka..."
                     
                     for i in {1..30}; do
-                      STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8085/api/products || true)
+                      RESPONSE=$(curl -s http://localhost:8761/eureka/apps || true)
                     
-                      echo "Attempt $i → Status: $STATUS"
+                      echo "$RESPONSE" | grep "PRODUCT-SERVICE" && \
+                      echo "$RESPONSE" | grep "ORDER-SERVICE" && \
+                      echo "$RESPONSE" | grep "USER-SERVICE" && \
+                      echo "All services registered!" && exit 0
                     
-                      if [ "$STATUS" = "200" ]; then
-                        echo "Services are READY"
-                        exit 0
-                      fi
-                    
+                      echo "Waiting for services..."
                       sleep 5
                     done
                     
-                    echo "Services NOT ready"
-                    docker logs api-gateway || true
+                    echo "Services not registered in Eureka"
                     exit 1
                     '''
 
