@@ -37,7 +37,7 @@ services:
         condition: service_started
       user-service:
         condition: service_started
-        restart: on-failure
+    restart: on-failure
 
   # Product Service
   product-service:
