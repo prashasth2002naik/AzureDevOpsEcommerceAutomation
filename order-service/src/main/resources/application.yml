@@ -28,9 +28,11 @@ eureka:
     service-url:
       defaultZone: http://eureka-server:8761/eureka/
 
+  # instance:
+  #   prefer-ip-address: true
+  #   non-secure-port: 8081   # ✅ VERY IMPORTANT
   instance:
-    prefer-ip-address: true
-    non-secure-port: 8081   # ✅ VERY IMPORTANT
+    hostname: order-service
 management:
   endpoints:
     web:
