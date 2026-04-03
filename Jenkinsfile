@@ -60,16 +60,10 @@ pipeline {
         stage('DEV - Deploy & Smoke Test') {
             steps {
 
-                // Clean
                 sh 'docker compose down --remove-orphans || true'
-
-                // Start ONLY backend first (NO GATEWAY DEPENDENCY ISSUE)
                 sh 'docker compose up -d eureka-server product-service order-service user-service'
                 sh 'sleep 20'
 
-                // =========================
-                // WAIT FOR EUREKA REGISTRATION (CRITICAL FIX)
-                // =========================
                 sh '''
                 echo "Waiting for services to register in Eureka..."
 
@@ -91,15 +85,9 @@ pipeline {
                 exit 1
                 '''
 
-                // =========================
-                // NOW START API GATEWAY + FRONTEND
-                // =========================
                 sh 'docker compose up -d api-gateway frontend'
                 sh 'sleep 20'
 
-                // =========================
-                // WAIT FOR GATEWAY
-                // =========================
                 sh '''
                 echo "Waiting for API Gateway to be ready..."
 
@@ -114,12 +102,8 @@ pipeline {
                 exit 1
                 '''
 
-                // Frontend test
                 sh 'curl -f http://localhost:3000'
 
-                // =========================
-                // BACKEND UNIT TESTS
-                // =========================
                 sh '''
                 docker run --rm -u $(id -u):$(id -g) -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
                 docker run --rm -u $(id -u):$(id -g) -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
@@ -159,81 +143,68 @@ pipeline {
                     sh 'docker compose down'
                 }
             }
+        }
 
-            // post {
-            //     always {
-            //         sh 'docker compose down || true'
-            //     }
-            // }
-        }
-    }
-    // =========================
-    // PROD STAGE (K8s Deploy)
-    // =========================
-    stage('PROD - Deploy to Kubernetes') {
-        when {
-            expression { currentBuild.currentResult == 'SUCCESS' }
-        }
-        steps {
-            script {
-    
-                // -------- Verify Cluster --------
-                sh '''
-                echo "Checking Kubernetes cluster..."
-                kubectl get nodes
-                '''
-    
-                // -------- Create Namespace --------
-                sh '''
-                echo "Creating namespace..."
-                kubectl apply -f k8s/namespace.yaml
-                '''
-    
-                // -------- Inject Build ID --------
-                sh '''
-                echo "Injecting Build ID..."
-    
-                sed -i "s/__TAG__/${BUILD_NUMBER}/g" k8s/*.yaml
-    
-                echo "Updated images:"
-                grep "image:" -R k8s/
-                '''
-    
-                // -------- Clean Old Pods --------
-                sh '''
-                echo "Deleting old pods..."
-                kubectl delete pods --all -n ecommerce-prod || true
-                '''
-    
-                // -------- Deploy --------
-                sh '''
-                echo "Deploying to Kubernetes..."
-                kubectl apply -f k8s/
-                '''
-    
-                // -------- Wait --------
-                sh 'sleep 40'
-    
-                // -------- Verify Pods --------
-                sh '''
-                echo "Checking pods..."
-                kubectl get pods -n ecommerce-prod
-                '''
-    
-                // -------- Verify Services --------
-                sh '''
-                echo "Checking services..."
-                kubectl get svc -n ecommerce-prod
-                '''
-    
-                // -------- Logs --------
-                sh '''
-                echo "Checking API Gateway logs..."
-                kubectl logs deployment/api-gateway -n ecommerce-prod --tail=50
-                '''
+        // =========================
+        // PROD STAGE (FIXED POSITION)
+        // =========================
+        stage('PROD - Deploy to Kubernetes') {
+            when {
+                expression { currentBuild.currentResult == 'SUCCESS' }
+            }
+            steps {
+                script {
+
+                    sh '''
+                    echo "Checking Kubernetes cluster..."
+                    kubectl get nodes
+                    '''
+
+                    sh '''
+                    echo "Creating namespace..."
+                    kubectl apply -f k8s/namespace.yaml
+                    '''
+
+                    sh '''
+                    echo "Injecting Build ID..."
+
+                    sed -i "s/__TAG__/${BUILD_NUMBER}/g" k8s/*.yaml
+
+                    echo "Updated images:"
+                    grep "image:" -R k8s/
+                    '''
+
+                    sh '''
+                    echo "Deleting old pods..."
+                    kubectl delete pods --all -n ecommerce-prod || true
+                    '''
+
+                    sh '''
+                    echo "Deploying to Kubernetes..."
+                    kubectl apply -f k8s/
+                    '''
+
+                    sh 'sleep 40'
+
+                    sh '''
+                    echo "Checking pods..."
+                    kubectl get pods -n ecommerce-prod
+                    '''
+
+                    sh '''
+                    echo "Checking services..."
+                    kubectl get svc -n ecommerce-prod
+                    '''
+
+                    sh '''
+                    echo "Checking API Gateway logs..."
+                    kubectl logs deployment/api-gateway -n ecommerce-prod --tail=50
+                    '''
+                }
             }
         }
     }
+
     // =========================
     // CLEANUP
     // =========================
