@@ -201,28 +201,27 @@ pipeline {
                     // Wait for API Gateway Port
                     // ---------------------------------
                     sh '''
-                    echo "Waiting for API Gateway to open port 8080..."
-        
-                    MAX_RETRIES=24
-                    RETRY_DELAY=5
+                    echo "Waiting for API Gateway to be ready..."
+                    
+                    MAX_RETRIES=20
                     COUNT=1
-        
+                    
                     while [ $COUNT -le $MAX_RETRIES ]
                     do
-                      echo "Attempt $COUNT of $MAX_RETRIES..."
-        
-                      if nc -z localhost 8085
+                      echo "Attempt $COUNT..."
+                    
+                      if curl -s http://localhost:8085/actuator/health | grep UP
                       then
-                        echo "API Gateway port 8085 is OPEN"
+                        echo "Gateway is READY"
                         exit 0
                       fi
-        
-                      sleep $RETRY_DELAY
+                    
+                      echo "Still starting..."
+                      sleep 5
                       COUNT=$((COUNT+1))
                     done
-        
-                    echo "API Gateway did not open port 8080"
-                    docker ps
+                    
+                    echo "Gateway failed to start"
                     docker logs api-gateway || true
                     exit 1
                     '''
