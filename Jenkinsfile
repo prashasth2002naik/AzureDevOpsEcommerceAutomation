@@ -203,21 +203,22 @@ pipeline {
                     sh '''
                     echo "Waiting for API Gateway to be ready..."
                     
-                    MAX_RETRIES=20
+                    MAX_RETRIES=30
+                    RETRY_DELAY=5
                     COUNT=1
                     
                     while [ $COUNT -le $MAX_RETRIES ]
                     do
                       echo "Attempt $COUNT..."
                     
-                      if curl -s http://localhost:8085/actuator/health | grep UP
-                      then
-                        echo "Gateway is READY"
-                        exit 0
-                      fi
+                      RESPONSE=$(curl -s http://localhost:8085/actuator/health || true)
+                    
+                      echo "Response: $RESPONSE"
+                    
+                      echo "$RESPONSE" | grep '"status":"UP"' && echo "Gateway is READY" && exit 0
                     
                       echo "Still starting..."
-                      sleep 5
+                      sleep $RETRY_DELAY
                       COUNT=$((COUNT+1))
                     done
                     
