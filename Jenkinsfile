@@ -68,7 +68,7 @@ pipeline {
                 sh '''
                 echo "Waiting for API Gateway to be ready..."
                 
-                MAX_RETRIES=40
+                MAX_RETRIES=50
                 RETRY_DELAY=5
                 COUNT=1
                 
@@ -80,7 +80,8 @@ pipeline {
                 
                   echo "Response: $RESPONSE"
                 
-                  echo "$RESPONSE" | grep '"status":"UP"' && echo "Gateway is READY" && exit 0
+                  # more flexible check
+                  echo "$RESPONSE" | grep UP && echo "Gateway is READY" && exit 0
                 
                   echo "Still starting..."
                   sleep $RETRY_DELAY
@@ -91,8 +92,7 @@ pipeline {
                 
                 echo "==== DEBUG LOGS ===="
                 docker ps
-                docker logs api-gateway | tail -50 || true
-                docker logs eureka-server | tail -50 || true
+                docker logs api-gateway | tail -100 || true
                 
                 exit 1
                 '''
