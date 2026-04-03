@@ -288,7 +288,8 @@ pipeline {
             // ---------------------------------
             post {
                 always {
-                    sh 'docker compose down || true'
+                    // sh 'docker compose down || true'
+                    echo "Skipping cleanup for debugging"
                 }
             }
         }
@@ -326,7 +327,8 @@ pipeline {
     // =========================
     post {
         always {
-            sh 'docker system prune -f || true'
+            // sh 'docker system prune -f || true'
+            echo "Skipping cleanup for debugging"
         }
     }
 }
