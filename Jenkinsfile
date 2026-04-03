@@ -9,6 +9,15 @@ pipeline {
     stages {
 
         // =========================
+        // CLEAN WORKSPACE
+        // =========================
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        // =========================
         // CI STAGE
         // =========================
         stage('CI - Build & Push Images') {
@@ -55,104 +64,77 @@ pipeline {
             }
         }
 
-        
         // =========================
-        // DEV STAGE
+        // DEV STAGE (WITH BACKEND TESTS — KEPT)
         // =========================
         stage('DEV - Deploy & Smoke Test') {
             steps {
-        
                 script {
-        
-                    // =========================
-                    // CLEAN OLD CONTAINERS (IMPORTANT)
-                    // =========================
+
+                    // CLEAN OLD CONTAINERS
                     sh '''
                     docker compose down --remove-orphans || true
                     docker rm -f $(docker ps -aq) || true
                     '''
-        
+
                     // =========================
-                    // BACKEND UNIT TESTS (IN DOCKER)
+                    // BACKEND UNIT TESTS (FIXED PERMISSIONS)
                     // =========================
                     sh '''
-                    docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
-                    docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
-                    docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
-                    docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
-                    docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -u $(id -u):$(id -g) -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -u $(id -u):$(id -g) -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -u $(id -u):$(id -g) -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -u $(id -u):$(id -g) -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -u $(id -u):$(id -g) -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
                     '''
-        
-                    // =========================
+
                     // VALIDATE + PULL
-                    // =========================
                     sh 'docker compose config'
                     sh 'docker compose pull || true'
-        
-                    // =========================
+
                     // DEPLOY
-                    // =========================
                     sh 'docker compose up -d --remove-orphans'
-        
-                    // =========================
+
                     // WAIT
-                    // =========================
                     sh '''
                     echo "Waiting for services to start..."
                     sleep 40
                     '''
-        
-                    // =========================
-                    // SMOKE TEST - API GATEWAY (UPDATED PORT)
-                    // =========================
+
+                    // API GATEWAY
                     sh '''
-                    echo "Smoke Test: API Gateway"
                     for i in {1..10}; do
                       nc -z localhost 8085 && echo "API Gateway is UP" && exit 0
                       sleep 5
                     done
                     exit 1
                     '''
-        
-                    // =========================
+
                     // FRONTEND
-                    // =========================
-                    sh '''
-                    echo "Smoke Test: Frontend"
-                    curl -f http://localhost:3000
-                    '''
-        
-                    // =========================
+                    sh 'curl -f http://localhost:3000'
+
                     // ORDER SERVICE
-                    // =========================
                     sh '''
-                    echo "Smoke Test: Order Service"
                     for i in {1..10}; do
-                      nc -z localhost 8081 && echo "Order Service is UP" && exit 0
+                      nc -z localhost 8081 && exit 0
                       sleep 5
                     done
                     exit 1
                     '''
-        
-                    // =========================
+
                     // PRODUCT SERVICE
-                    // =========================
                     sh '''
-                    echo "Smoke Test: Product Service"
                     for i in {1..10}; do
-                      nc -z localhost 8082 && echo "Product Service is UP" && exit 0
+                      nc -z localhost 8082 && exit 0
                       sleep 5
                     done
                     exit 1
                     '''
-        
-                    // =========================
+
                     // USER SERVICE
-                    // =========================
                     sh '''
-                    echo "Smoke Test: User Service"
                     for i in {1..10}; do
-                      nc -z localhost 8083 && echo "User Service is UP" && exit 0
+                      nc -z localhost 8083 && exit 0
                       sleep 5
                     done
                     exit 1
@@ -160,85 +142,56 @@ pipeline {
                 }
             }
         }
+
+        // =========================
+        // TEST STAGE
+        // =========================
         stage('TEST - Integration & Load') {
             steps {
                 script {
-        
-                    // =========================
-                    // START SERVICES
-                    // =========================
+
+                    sh 'docker compose up -d'
+
+                    // WAIT FOR API GATEWAY
                     sh '''
-                    echo "Starting TEST environment services..."
-                    docker compose up -d
-                    docker ps
-                    '''
-        
-                    // =========================
-                    // WAIT FOR API GATEWAY (UPDATED PORT)
-                    // =========================
-                    sh '''
-                    echo "Waiting for API Gateway to open port 8085..."
-        
-                    MAX_RETRIES=24
-                    RETRY_DELAY=5
+                    MAX_RETRIES=30
                     COUNT=1
-                    
+
                     while [ $COUNT -le $MAX_RETRIES ]
                     do
-                      echo "Attempt $COUNT..."
-                    
                       if curl -f http://localhost:8085/actuator/health
                       then
-                        echo "API Gateway is READY"
                         exit 0
                       fi
-                    
-                      sleep $RETRY_DELAY
+                      sleep 5
                       COUNT=$((COUNT+1))
                     done
-                    
-                    echo "API Gateway NOT READY"
+
                     docker logs api-gateway || true
                     exit 1
                     '''
-        
-                    // =========================
+
                     // INTEGRATION TESTS
-                    // =========================
                     sh '''
-                    echo "Running Integration Tests..."
-        
-                    curl -f http://localhost:8085/api/products
-                    curl -f http://localhost:8085/api/orders
-                    curl -f http://localhost:8085/api/users
-        
-                    echo "Integration Tests PASSED"
+                    for i in {1..10}; do curl -f http://localhost:8085/api/products && break || sleep 5; done
+                    for i in {1..10}; do curl -f http://localhost:8085/api/orders && break || sleep 5; done
+                    for i in {1..10}; do curl -f http://localhost:8085/api/users && break || sleep 5; done
                     '''
-        
-                    // =========================
-                    // LOAD TEST (k6)
-                    // =========================
+
+                    // LOAD TEST
                     sh '''
-                    echo "Running k6 Load Test..."
-        
-                    ls -la
-        
                     docker run --rm \
                       -v $(pwd)/loadtest.js:/scripts/loadtest.js:ro \
                       --network host \
                       grafana/k6 run /scripts/loadtest.js
                     '''
-        
-                    // =========================
-                    // CLEANUP
-                    // =========================
-                    sh '''
-                    echo "Stopping TEST services..."
-                    docker compose down --remove-orphans || true
-                    '''
+
+                    sh 'docker compose down --remove-orphans || true'
                 }
             }
         }
+
+
         /*
         // =========================
         // PROD STAGE
