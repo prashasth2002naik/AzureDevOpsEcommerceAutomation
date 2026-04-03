@@ -68,16 +68,32 @@ pipeline {
                 sh '''
                 echo "Waiting for API Gateway to be ready..."
                 
-                for i in {1..15}; do
-                  if curl -s http://localhost:8085/actuator/health | grep UP; then
-                    echo "Gateway is READY"
-                    exit 0
-                  fi
+                MAX_RETRIES=40
+                RETRY_DELAY=5
+                COUNT=1
+                
+                while [ $COUNT -le $MAX_RETRIES ]
+                do
+                  echo "Attempt $COUNT..."
+                
+                  RESPONSE=$(curl -s http://localhost:8085/actuator/health || true)
+                
+                  echo "Response: $RESPONSE"
+                
+                  echo "$RESPONSE" | grep '"status":"UP"' && echo "Gateway is READY" && exit 0
+                
                   echo "Still starting..."
-                  sleep 5
+                  sleep $RETRY_DELAY
+                  COUNT=$((COUNT+1))
                 done
                 
                 echo "Gateway failed to start"
+                
+                echo "==== DEBUG LOGS ===="
+                docker ps
+                docker logs api-gateway | tail -50 || true
+                docker logs eureka-server | tail -50 || true
+                
                 exit 1
                 '''
                 sh 'curl -f http://localhost:3000'
