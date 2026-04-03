@@ -4,12 +4,14 @@ server:
 spring:
   application:
     name: api-gateway
+
   cloud:
     gateway:
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
+
       routes:
         - id: product-service
           uri: lb://product-service
@@ -17,20 +19,24 @@ spring:
             - Path=/api/products/**
           filters:
             - StripPrefix=0
-      
+
         - id: order-service
           uri: lb://order-service
           predicates:
             - Path=/api/orders/**
           filters:
             - StripPrefix=0
-      
+
         - id: user-service
           uri: lb://user-service
           predicates:
             - Path=/api/users/**
           filters:
             - StripPrefix=0
+
+    loadbalancer:        
+      ribbon:
+        enabled: false
       globalcors:
         corsConfigurations:
           '[/**]':
