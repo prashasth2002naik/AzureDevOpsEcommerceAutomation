@@ -197,9 +197,9 @@ pipeline {
                     do
                       echo "Attempt $COUNT of $MAX_RETRIES..."
         
-                      if nc -z localhost 8080
+                      if nc -z localhost 8085
                       then
-                        echo "API Gateway port 8080 is OPEN"
+                        echo "API Gateway port 8085 is OPEN"
                         exit 0
                       fi
         
@@ -219,9 +219,9 @@ pipeline {
                     sh '''
                     echo "Running Integration Tests..."
         
-                    curl -f http://localhost:8080/api/products
-                    curl -f http://localhost:8080/api/orders
-                    curl -f http://localhost:8080/api/users
+                    curl -f http://localhost:8085/api/products
+                    curl -f http://localhost:8085/api/orders
+                    curl -f http://localhost:8085/api/users
         
                     echo "Integration Tests PASSED"
                     '''
