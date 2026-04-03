@@ -129,8 +129,24 @@ pipeline {
                     // WAIT
                     // =========================
                     sh '''
-                    echo "Waiting for services to start..."
-                    sleep 40
+                    echo "Waiting for services to be READY..."
+                    
+                    for i in {1..30}; do
+                      STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8085/api/products || true)
+                    
+                      echo "Attempt $i → Status: $STATUS"
+                    
+                      if [ "$STATUS" = "200" ]; then
+                        echo "Services are READY"
+                        exit 0
+                      fi
+                    
+                      sleep 5
+                    done
+                    
+                    echo "Services NOT ready"
+                    docker logs api-gateway || true
+                    exit 1
                     '''
 
                     // =========================
