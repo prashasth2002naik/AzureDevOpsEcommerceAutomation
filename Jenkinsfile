@@ -45,7 +45,7 @@ pipeline {
                             def dirName = parts[0]
                             def imageName = parts[1]
 
-                            dir(dirName) {
+                            dir("${env.WORKSPACE}/${dirName}") {
                                 sh '''
                                 if [ -f pom.xml ]; then
                                     mvn clean test
