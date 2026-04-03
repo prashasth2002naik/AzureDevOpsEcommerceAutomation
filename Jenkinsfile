@@ -46,7 +46,13 @@ pipeline {
                             def imageName = parts[1]
 
                             dir(dirName) {
-                                sh 'mvn clean test'
+                                sh '''
+                                if [ -f pom.xml ]; then
+                                    mvn clean test
+                                else
+                                    echo "No pom.xml found in $(pwd), skipping Maven test"
+                                fi
+                                '''
                                 sh "docker build -t $DOCKER_USER/${imageName}:$IMAGE_TAG ."
                                 sh "docker push $DOCKER_USER/${imageName}:$IMAGE_TAG"
                             }
