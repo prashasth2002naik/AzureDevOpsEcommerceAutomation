@@ -31,7 +31,13 @@ services:
     depends_on:
       eureka-server:
         condition: service_healthy
-    restart: on-failure
+      product-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+        restart: on-failure
 
   # Product Service
   product-service:
