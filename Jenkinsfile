@@ -82,11 +82,11 @@ pipeline {
                     // BACKEND UNIT TESTS (IN DOCKER)
                     // =========================
                     sh '''
-                    docker run --rm -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
-                    docker run --rm -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
-                    docker run --rm -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
-                    docker run --rm -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
-                    docker run --rm -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -u $(id -u):$(id -g) -v $(pwd)/api-gateway:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -u $(id -u):$(id -g) -v $(pwd)/eureka-server:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -u $(id -u):$(id -g) -v $(pwd)/order-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -u $(id -u):$(id -g) -v $(pwd)/product-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
+                    docker run --rm -u $(id -u):$(id -g) -v $(pwd)/user-service:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean test
                     '''
 
                     // =========================
