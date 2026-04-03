@@ -65,7 +65,21 @@ pipeline {
                 sh 'docker compose up -d --remove-orphans'
                 sh 'sleep 40'
 
-                sh 'nc -z localhost 8085'
+                sh '''
+                echo "Waiting for API Gateway to be ready..."
+                
+                for i in {1..15}; do
+                  if curl -s http://localhost:8085/actuator/health | grep UP; then
+                    echo "Gateway is READY"
+                    exit 0
+                  fi
+                  echo "Still starting..."
+                  sleep 5
+                done
+                
+                echo "Gateway failed to start"
+                exit 1
+                '''
                 sh 'curl -f http://localhost:3000'
 
                 script {
