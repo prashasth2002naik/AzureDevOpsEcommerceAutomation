@@ -55,3 +55,8 @@ eureka:
   instance:
     prefer-ip-address: true
     non-secure-port: 8083   # ✅ VERY IMPORTANT
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
