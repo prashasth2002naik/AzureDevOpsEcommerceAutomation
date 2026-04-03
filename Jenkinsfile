@@ -68,7 +68,7 @@ pipeline {
                 sh '''
                 echo "Waiting for API Gateway to be ready..."
                 
-                MAX_RETRIES=50
+                MAX_RETRIES=30
                 RETRY_DELAY=5
                 COUNT=1
                 
@@ -80,8 +80,7 @@ pipeline {
                 
                   echo "Response: $RESPONSE"
                 
-                  # more flexible check
-                  echo "$RESPONSE" | grep UP && echo "Gateway is READY" && exit 0
+                  echo "$RESPONSE" | grep '"status":"UP"' && echo "Gateway is READY" && exit 0
                 
                   echo "Still starting..."
                   sleep $RETRY_DELAY
@@ -89,11 +88,7 @@ pipeline {
                 done
                 
                 echo "Gateway failed to start"
-                
-                echo "==== DEBUG LOGS ===="
-                docker ps
-                docker logs api-gateway | tail -100 || true
-                
+                docker logs api-gateway || true
                 exit 1
                 '''
                 sh 'curl -f http://localhost:3000'
