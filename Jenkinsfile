@@ -216,13 +216,45 @@ pipeline {
                     // ---------------------------------
                     // Integration Tests (UNCHANGED)
                     // ---------------------------------
+                    // sh '''
+                    // echo "Running Integration Tests..."
+        
+                    // curl -f http://localhost:8085/api/products
+                    // curl -f http://localhost:8085/api/orders
+                    // curl -f http://localhost:8085/api/users
+        
+                    // echo "Integration Tests PASSED"
+                    // '''
                     sh '''
                     echo "Running Integration Tests..."
-        
-                    curl -f http://localhost:8085/api/products
+                    
+                    MAX_RETRIES=12
+                    COUNT=1
+                    
+                    while [ $COUNT -le $MAX_RETRIES ]
+                    do
+                      echo "Attempt $COUNT..."
+                    
+                      if curl -f http://localhost:8085/api/products; then
+                        echo "Products API OK"
+                        break
+                      fi
+                    
+                      echo "Retrying in 5 seconds..."
+                      sleep 5
+                      COUNT=$((COUNT+1))
+                    done
+                    
+                    if [ $COUNT -gt $MAX_RETRIES ]; then
+                      echo "Products API FAILED"
+                      docker logs api-gateway | tail -50
+                      docker logs product-service | tail -50
+                      exit 1
+                    fi
+                    
                     curl -f http://localhost:8085/api/orders
                     curl -f http://localhost:8085/api/users
-        
+                    
                     echo "Integration Tests PASSED"
                     '''
         
