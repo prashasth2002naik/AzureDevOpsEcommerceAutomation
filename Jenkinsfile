@@ -130,13 +130,15 @@ pipeline {
                     // =========================
                     sh '''
                     echo "Waiting for services to register in Eureka..."
+
+                    for i in {1..20}; do
+                      RESPONSE=$(curl -s http://localhost:8761/eureka/apps)
                     
-                    for i in {1..30}; do
-                      RESPONSE=$(curl -s http://localhost:8761/eureka/apps || true)
+                      echo "$RESPONSE"
                     
-                      echo "$RESPONSE" | grep "PRODUCT-SERVICE" && \
-                      echo "$RESPONSE" | grep "ORDER-SERVICE" && \
-                      echo "$RESPONSE" | grep "USER-SERVICE" && \
+                      echo "$RESPONSE" | grep PRODUCT-SERVICE && \
+                      echo "$RESPONSE" | grep ORDER-SERVICE && \
+                      echo "$RESPONSE" | grep USER-SERVICE && \
                       echo "All services registered!" && exit 0
                     
                       echo "Waiting for services..."
