@@ -15,14 +15,22 @@ spring:
           uri: lb://product-service
           predicates:
             - Path=/api/products/**
+          filters:
+            - StripPrefix=0
+      
         - id: order-service
           uri: lb://order-service
           predicates:
             - Path=/api/orders/**
+          filters:
+            - StripPrefix=0
+      
         - id: user-service
           uri: lb://user-service
           predicates:
             - Path=/api/users/**
+          filters:
+            - StripPrefix=0
       globalcors:
         corsConfigurations:
           '[/**]':
