@@ -182,23 +182,22 @@ pipeline {
                     MAX_RETRIES=24
                     RETRY_DELAY=5
                     COUNT=1
-        
+                    
                     while [ $COUNT -le $MAX_RETRIES ]
                     do
-                      echo "Attempt $COUNT of $MAX_RETRIES..."
-        
-                      if nc -z localhost 8085
+                      echo "Attempt $COUNT..."
+                    
+                      if curl -f http://localhost:8085/actuator/health
                       then
-                        echo "API Gateway is UP"
+                        echo "API Gateway is READY"
                         exit 0
                       fi
-        
+                    
                       sleep $RETRY_DELAY
                       COUNT=$((COUNT+1))
                     done
-        
-                    echo "API Gateway did not start"
-                    docker ps
+                    
+                    echo "API Gateway NOT READY"
                     docker logs api-gateway || true
                     exit 1
                     '''
