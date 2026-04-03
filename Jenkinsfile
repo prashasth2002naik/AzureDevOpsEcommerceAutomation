@@ -226,7 +226,8 @@ pipeline {
                     docker logs api-gateway || true
                     exit 1
                     '''
-        
+                    sh 'docker ps'
+                    sh 'docker logs api-gateway | tail -50 || true'
                     // ---------------------------------
                     // Integration Tests (UNCHANGED)
                     // ---------------------------------
