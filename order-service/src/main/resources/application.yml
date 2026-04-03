@@ -33,6 +33,8 @@ eureka:
   #   non-secure-port: 8081   # ✅ VERY IMPORTANT
   instance:
     hostname: order-service
+    non-secure-port: 8081
+    prefer-ip-address: false
 management:
   endpoints:
     web:
