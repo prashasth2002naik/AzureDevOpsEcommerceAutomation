@@ -167,7 +167,73 @@ pipeline {
             // }
         }
     }
-
+    // =========================
+    // PROD STAGE (K8s Deploy)
+    // =========================
+    stage('PROD - Deploy to Kubernetes') {
+        when {
+            expression { currentBuild.currentResult == 'SUCCESS' }
+        }
+        steps {
+            script {
+    
+                // -------- Verify Cluster --------
+                sh '''
+                echo "Checking Kubernetes cluster..."
+                kubectl get nodes
+                '''
+    
+                // -------- Create Namespace --------
+                sh '''
+                echo "Creating namespace..."
+                kubectl apply -f k8s/namespace.yaml
+                '''
+    
+                // -------- Inject Build ID --------
+                sh '''
+                echo "Injecting Build ID..."
+    
+                sed -i "s/__TAG__/${BUILD_NUMBER}/g" k8s/*.yaml
+    
+                echo "Updated images:"
+                grep "image:" -R k8s/
+                '''
+    
+                // -------- Clean Old Pods --------
+                sh '''
+                echo "Deleting old pods..."
+                kubectl delete pods --all -n ecommerce-prod || true
+                '''
+    
+                // -------- Deploy --------
+                sh '''
+                echo "Deploying to Kubernetes..."
+                kubectl apply -f k8s/
+                '''
+    
+                // -------- Wait --------
+                sh 'sleep 40'
+    
+                // -------- Verify Pods --------
+                sh '''
+                echo "Checking pods..."
+                kubectl get pods -n ecommerce-prod
+                '''
+    
+                // -------- Verify Services --------
+                sh '''
+                echo "Checking services..."
+                kubectl get svc -n ecommerce-prod
+                '''
+    
+                // -------- Logs --------
+                sh '''
+                echo "Checking API Gateway logs..."
+                kubectl logs deployment/api-gateway -n ecommerce-prod --tail=50
+                '''
+            }
+        }
+    }
     // =========================
     // CLEANUP
     // =========================
