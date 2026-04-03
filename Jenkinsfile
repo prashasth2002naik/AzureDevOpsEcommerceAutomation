@@ -167,27 +167,100 @@ pipeline {
             }
         }
 
-        /*
         // =========================
         // TEST STAGE
         // =========================
         stage('TEST - Integration & Load') {
             steps {
-                sh 'docker compose up -d'
-
-                sh 'curl -f http://localhost:8080/api/products'
-                sh 'curl -f http://localhost:8080/api/orders'
-                sh 'curl -f http://localhost:8080/api/users'
-
-                sh '''
-                docker run --rm \
-                -v $(pwd)/loadtest.js:/scripts/loadtest.js \
-                --network host \
-                grafana/k6 run /scripts/loadtest.js
-                '''
+                script {
+        
+                    // ---------------------------------
+                    // Start Services
+                    // ---------------------------------
+                    sh '''
+                    echo "Starting TEST environment services..."
+                    docker compose up -d
+                    docker ps
+                    '''
+        
+                    // ---------------------------------
+                    // Wait for API Gateway Port
+                    // ---------------------------------
+                    sh '''
+                    echo "Waiting for API Gateway to open port 8080..."
+        
+                    MAX_RETRIES=24
+                    RETRY_DELAY=5
+                    COUNT=1
+        
+                    while [ $COUNT -le $MAX_RETRIES ]
+                    do
+                      echo "Attempt $COUNT of $MAX_RETRIES..."
+        
+                      if nc -z localhost 8080
+                      then
+                        echo "API Gateway port 8080 is OPEN"
+                        exit 0
+                      fi
+        
+                      sleep $RETRY_DELAY
+                      COUNT=$((COUNT+1))
+                    done
+        
+                    echo "API Gateway did not open port 8080"
+                    docker ps
+                    docker logs api-gateway || true
+                    exit 1
+                    '''
+        
+                    // ---------------------------------
+                    // Integration Tests (UNCHANGED)
+                    // ---------------------------------
+                    sh '''
+                    echo "Running Integration Tests..."
+        
+                    curl -f http://localhost:8080/api/products
+                    curl -f http://localhost:8080/api/orders
+                    curl -f http://localhost:8080/api/users
+        
+                    echo "Integration Tests PASSED"
+                    '''
+        
+                    // ---------------------------------
+                    // Load Test (k6)
+                    // ---------------------------------
+                    sh '''
+                    echo "Running k6 Load Test..."
+        
+                    # Verify file exists
+                    ls -la $(pwd)
+        
+                    docker run --rm \
+                      -v $(pwd)/loadtest.js:/scripts/loadtest.js:ro \
+                      --network host \
+                      grafana/k6 run /scripts/loadtest.js
+                    '''
+        
+                    // ---------------------------------
+                    // Cleanup
+                    // ---------------------------------
+                    sh '''
+                    echo "Stopping TEST services..."
+                    docker compose down
+                    '''
+                }
+            }
+        
+            // ---------------------------------
+            // Always cleanup (equivalent to condition: always())
+            // ---------------------------------
+            post {
+                always {
+                    sh 'docker compose down || true'
+                }
             }
         }
-
+        /*
         // =========================
         // PROD STAGE
         // =========================
