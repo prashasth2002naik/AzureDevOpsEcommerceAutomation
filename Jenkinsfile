@@ -53,7 +53,26 @@ pipeline {
                                     echo "No pom.xml found in $(pwd), skipping Maven test"
                                 fi
                                 '''
-                                sh "docker build -t $DOCKER_USER/${imageName}:$IMAGE_TAG ."
+                            
+                                sh '''
+                                if [ -f Dockerfile ]; then
+                                    docker build -t '"$DOCKER_USER"'/'"$imageName"':'"$IMAGE_TAG"' .
+                                else
+                                    echo "No Dockerfile in $(pwd), searching inside..."
+                            
+                                    SUBDIR=$(find . -name Dockerfile | head -n 1)
+                            
+                                    if [ -n "$SUBDIR" ]; then
+                                        DIR=$(dirname $SUBDIR)
+                                        echo "Building from $DIR"
+                                        docker build -t '"$DOCKER_USER"'/'"$imageName"':'"$IMAGE_TAG"' $DIR
+                                    else
+                                        echo "No Dockerfile found, failing build"
+                                        exit 1
+                                    fi
+                                fi
+                                '''
+                            
                                 sh "docker push $DOCKER_USER/${imageName}:$IMAGE_TAG"
                             }
                         }
