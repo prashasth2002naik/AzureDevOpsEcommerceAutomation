@@ -37,7 +37,9 @@ spring:
           filters:
             - StripPrefix=0
 
-    loadbalancer:        
+    loadbalancer:
+      retry:
+        enabled: true
       ribbon:
         enabled: false
       globalcors:
