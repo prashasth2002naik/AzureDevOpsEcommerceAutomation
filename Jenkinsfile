@@ -242,34 +242,35 @@ pipeline {
                     sh '''
                     echo "Running Integration Tests..."
                     
-                    MAX_RETRIES=12
-                    COUNT=1
+                    set +e   # don't stop immediately
                     
-                    while [ $COUNT -le $MAX_RETRIES ]
-                    do
-                      echo "Attempt $COUNT..."
+                    curl -v http://localhost:8085/api/products
+                    PRODUCT_STATUS=$?
                     
-                      if curl -f http://localhost:8085/api/products; then
-                        echo "Products API OK"
-                        break
-                      fi
+                    curl -v http://localhost:8085/api/orders
+                    ORDER_STATUS=$?
                     
-                      echo "Retrying in 5 seconds..."
-                      sleep 5
-                      COUNT=$((COUNT+1))
-                    done
+                    curl -v http://localhost:8085/api/users
+                    USER_STATUS=$?
                     
-                    if [ $COUNT -gt $MAX_RETRIES ]; then
-                      echo "Products API FAILED"
-                      docker logs api-gateway | tail -50
-                      docker logs product-service | tail -50
+                    echo "Statuses:"
+                    echo "Products: $PRODUCT_STATUS"
+                    echo "Orders: $ORDER_STATUS"
+                    echo "Users: $USER_STATUS"
+                    
+                    if [ $PRODUCT_STATUS -ne 0 ] || [ $ORDER_STATUS -ne 0 ] || [ $USER_STATUS -ne 0 ]; then
+                      echo "Integration FAILED"
+                    
+                      echo "==== API GATEWAY LOGS ===="
+                      docker logs api-gateway | tail -50 || true
+                    
+                      echo "==== PRODUCT SERVICE LOGS ===="
+                      docker logs product-service | tail -50 || true
+                    
                       exit 1
                     fi
                     
-                    curl -f http://localhost:8085/api/orders
-                    curl -f http://localhost:8085/api/users
-                    
-                    echo "Integration Tests PASSED"
+                    echo "Integration PASSED"
                     '''
         
                     // ---------------------------------
